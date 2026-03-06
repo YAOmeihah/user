@@ -1006,10 +1006,12 @@ const captureStripeIfNeeded = async () => {
   }
 }
 
-const syncEpayReturnIfNeeded = async () => {
-  const epayReturn = readRouteQueryValue('epay_return').toLowerCase()
-  
-  if (epayReturn !== '1') return
+const syncPaymentReturnIfNeeded = async () => {
+  // 支持所有支付方式的回调同步跳转
+  const returnMarkers = ['epay_return', 'alipay_return', 'wechat_return', 'epusdt_return', 'tokenpay_return']
+  const hasReturn = returnMarkers.some(marker => readRouteQueryValue(marker).toLowerCase() === '1')
+
+  if (!hasReturn) return
   if (!orderNoQuery.value) return
 
   try {
@@ -1288,7 +1290,7 @@ watch(
   () => {
     void capturePaypalIfNeeded()
     void captureStripeIfNeeded()
-    void syncEpayReturnIfNeeded()
+    void syncPaymentReturnIfNeeded()
   },
   { immediate: true }
 )
