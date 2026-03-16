@@ -78,7 +78,7 @@
               <h2 class="text-lg font-bold mb-4 theme-text-primary">{{ t('products.categories') }}</h2>
               <ul class="space-y-2">
                 <li>
-                  <button @click="selectedCategory = null; showFilterDrawer = false"
+                  <button @click="selectCategory(null, true)"
                     class="w-full text-left px-4 py-3 rounded-xl transition-all duration-300 border min-h-[44px]"
                     :class="selectedCategory === null
                       ? 'theme-btn-primary border border-transparent'
@@ -86,17 +86,52 @@
                     {{ t('products.allCategories') }}
                   </button>
                 </li>
-                <li v-for="category in categories" :key="category.id">
-                  <button @click="selectedCategory = category.id; showFilterDrawer = false"
-                    class="w-full text-left px-4 py-3 rounded-xl transition-all duration-300 border flex items-center gap-2 min-h-[44px]"
-                    :class="selectedCategory === category.id
-                      ? 'theme-btn-primary border border-transparent'
-                      : 'border-transparent theme-text-secondary hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'">
-                    <img v-if="category.icon" :src="getImageUrl(category.icon)"
-                      :alt="getLocalizedText(category.name)"
-                      class="h-5 w-5 rounded object-cover" />
-                    {{ getLocalizedText(category.name) }}
-                  </button>
+                <li v-for="group in categoryGroups" :key="group.id">
+                  <div class="space-y-2">
+                    <div class="flex items-stretch gap-2">
+                      <button @click="selectCategory(group.id, true)"
+                        class="flex-1 text-left px-4 py-3 rounded-xl transition-all duration-300 border flex items-center gap-2 min-h-[44px]"
+                        :class="selectedCategory === group.id
+                          ? 'theme-btn-primary border border-transparent'
+                          : 'border-transparent theme-text-secondary hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'">
+                        <img v-if="group.icon" :src="getImageUrl(group.icon)"
+                          :alt="getLocalizedText(group.name)"
+                          class="h-5 w-5 rounded object-cover" />
+                        <span class="truncate">{{ getLocalizedText(group.name) }}</span>
+                      </button>
+                      <button
+                        v-if="group.children.length > 0"
+                        type="button"
+                        class="h-10 w-10 shrink-0 self-center rounded-full border flex items-center justify-center shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                        :class="getParentToggleButtonClass(group.id)"
+                        @click.stop="toggleParentCategory(group.id)"
+                      >
+                        <svg
+                          class="w-4 h-4 transition-transform duration-200"
+                          :class="isParentExpanded(group.id) ? 'rotate-90' : ''"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+                    <ul v-if="group.children.length > 0 && isParentExpanded(group.id)" class="space-y-2 pl-4">
+                      <li v-for="child in group.children" :key="child.id">
+                        <button @click="selectCategory(child.id, true)"
+                          class="w-full text-left px-4 py-3 rounded-xl transition-all duration-300 border flex items-center gap-2 min-h-[44px]"
+                          :class="selectedCategory === child.id
+                            ? 'theme-btn-primary border border-transparent'
+                            : 'border-transparent theme-text-secondary hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'">
+                          <img v-if="child.icon" :src="getImageUrl(child.icon)"
+                            :alt="getLocalizedText(child.name)"
+                            class="h-5 w-5 rounded object-cover" />
+                          <span class="truncate">{{ getLocalizedText(child.name) }}</span>
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
                 </li>
               </ul>
             </div>
@@ -126,7 +161,7 @@
             </h2>
             <ul class="space-y-2">
               <li>
-                <button @click="selectedCategory = null"
+                <button @click="selectCategory(null)"
                   class="w-full text-left px-4 py-3 rounded-xl transition-all duration-300 border"
                   :class="selectedCategory === null
                     ? 'theme-btn-primary border border-transparent'
@@ -134,17 +169,52 @@
                   {{ t('products.allCategories') }}
                 </button>
               </li>
-              <li v-for="category in categories" :key="category.id">
-                <button @click="selectedCategory = category.id"
-                  class="w-full text-left px-4 py-3 rounded-xl transition-all duration-300 border flex items-center gap-2"
-                  :class="selectedCategory === category.id
-                    ? 'theme-btn-primary border border-transparent'
-                    : 'border-transparent theme-text-secondary hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'">
-                  <img v-if="category.icon" :src="getImageUrl(category.icon)"
-                    :alt="getLocalizedText(category.name)"
-                    class="h-5 w-5 rounded object-cover" />
-                  {{ getLocalizedText(category.name) }}
-                </button>
+              <li v-for="group in categoryGroups" :key="group.id">
+                <div class="space-y-2">
+                  <div class="flex items-stretch gap-2">
+                    <button @click="selectCategory(group.id)"
+                      class="flex-1 text-left px-4 py-3 rounded-xl transition-all duration-300 border flex items-center gap-2"
+                      :class="selectedCategory === group.id
+                        ? 'theme-btn-primary border border-transparent'
+                        : 'border-transparent theme-text-secondary hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'">
+                      <img v-if="group.icon" :src="getImageUrl(group.icon)"
+                        :alt="getLocalizedText(group.name)"
+                        class="h-5 w-5 rounded object-cover" />
+                      <span class="truncate">{{ getLocalizedText(group.name) }}</span>
+                    </button>
+                    <button
+                      v-if="group.children.length > 0"
+                      type="button"
+                      class="h-10 w-10 shrink-0 self-center rounded-full border flex items-center justify-center shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                      :class="getParentToggleButtonClass(group.id)"
+                      @click.stop="toggleParentCategory(group.id)"
+                    >
+                      <svg
+                        class="w-4 h-4 transition-transform duration-200"
+                        :class="isParentExpanded(group.id) ? 'rotate-90' : ''"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                  <ul v-if="group.children.length > 0 && isParentExpanded(group.id)" class="space-y-2 pl-4">
+                    <li v-for="child in group.children" :key="child.id">
+                      <button @click="selectCategory(child.id)"
+                        class="w-full text-left px-4 py-3 rounded-xl transition-all duration-300 border flex items-center gap-2"
+                        :class="selectedCategory === child.id
+                          ? 'theme-btn-primary border border-transparent'
+                          : 'border-transparent theme-text-secondary hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5'">
+                        <img v-if="child.icon" :src="getImageUrl(child.icon)"
+                          :alt="getLocalizedText(child.name)"
+                          class="h-5 w-5 rounded object-cover" />
+                        <span class="truncate">{{ getLocalizedText(child.name) }}</span>
+                      </button>
+                    </li>
+                  </ul>
+                </div>
               </li>
             </ul>
           </div>
@@ -220,8 +290,8 @@
 
                 <!-- Content Area -->
                 <div class="p-3 md:p-5 relative z-20 flex flex-col flex-1">
-                  <div v-if="product.category?.name" class="text-xs theme-text-muted uppercase tracking-wider mb-1 md:mb-2 truncate">
-                    {{ t('products.categoryLabel') }} · {{ getLocalizedText(product.category.name) }}
+                  <div v-if="getProductCategoryLabel(product)" class="text-xs theme-text-muted uppercase tracking-wider mb-1 md:mb-2 truncate">
+                    {{ t('products.categoryLabel') }} · {{ getProductCategoryLabel(product) }}
                   </div>
                   <h3 class="text-sm md:text-lg font-bold theme-text-primary mb-1 md:mb-2 transition-colors line-clamp-1">
                     {{ getLocalizedText(product.title) }}
@@ -360,10 +430,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { productAPI, categoryAPI } from '../api'
+import { buildCategoryGroups, buildCategoryPath, createCategoryMap, normalizeCategoryParentId, type PublicCategory } from '../utils/category'
 import { getImageUrl, getFirstImageUrl } from '../utils/image'
 import { debounceAsync } from '../utils/debounce'
 import { useLocalized, useProductLabels } from '../composables/useProduct'
@@ -377,7 +448,7 @@ const { getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeClass, getSt
 
 const loading = ref(true)
 const products = ref<any[]>([])
-const categories = ref<any[]>([])
+const categories = ref<PublicCategory[]>([])
 const selectedCategory = ref<number | null>(null)
 const searchQuery = ref('')
 const currentPage = ref(1)
@@ -385,11 +456,82 @@ const pageSize = ref(12)
 const total = ref(0)
 const totalPages = ref(0)
 const showFilterDrawer = ref(false)
+const expandedParentIds = ref<number[]>([])
+
+const categoryMap = computed(() => createCategoryMap(categories.value))
+const categoryGroups = computed(() => buildCategoryGroups(categories.value))
 
 // Detect mobile 2-col grid (< md breakpoint)
 const isMobileGrid = ref(window.innerWidth < 768)
 const handleResize = () => {
   isMobileGrid.value = window.innerWidth < 768
+}
+
+const isParentExpanded = (categoryId: number) => {
+  return expandedParentIds.value.includes(categoryId)
+}
+
+const expandParentCategory = (categoryId: number) => {
+  if (!categoryId || isParentExpanded(categoryId)) return
+  expandedParentIds.value = [...expandedParentIds.value, categoryId]
+}
+
+const toggleParentCategory = (categoryId: number) => {
+  if (isParentExpanded(categoryId)) {
+    expandedParentIds.value = expandedParentIds.value.filter((id) => id !== categoryId)
+    return
+  }
+
+  expandParentCategory(categoryId)
+}
+
+const getParentToggleButtonClass = (categoryId: number) => {
+  return isParentExpanded(categoryId)
+    ? 'theme-btn-primary border-transparent'
+    : 'theme-panel-soft theme-text-muted hover:text-gray-900 dark:hover:text-white'
+}
+
+const syncExpandedCategoryState = () => {
+  if (!selectedCategory.value) return
+
+  const matched = categoryMap.value.get(selectedCategory.value)
+  if (!matched) return
+
+  const parentId = normalizeCategoryParentId(matched.parent_id)
+  if (parentId > 0) {
+    expandParentCategory(parentId)
+    return
+  }
+
+  const selectedGroup = categoryGroups.value.find((group) => group.id === matched.id)
+  if (selectedGroup?.children.length) {
+    expandParentCategory(selectedGroup.id)
+  }
+}
+
+const selectCategory = (categoryId: number | null, closeDrawer = false) => {
+  selectedCategory.value = categoryId
+  if (closeDrawer) {
+    showFilterDrawer.value = false
+  }
+}
+
+const getCategoryPathById = (categoryId: unknown) => {
+  const normalizedId = Number(categoryId)
+  if (!Number.isFinite(normalizedId) || normalizedId <= 0) return ''
+
+  const matched = categoryMap.value.get(Math.floor(normalizedId))
+  return buildCategoryPath(matched, categoryMap.value, getLocalizedText)
+}
+
+const getProductCategoryLabel = (product: any) => {
+  const category = product?.category
+  if (!category) return ''
+
+  const resolvedPath = getCategoryPathById(category.id)
+  if (resolvedPath) return resolvedPath
+
+  return category.name ? getLocalizedText(category.name) : ''
 }
 
 const loadProducts = async () => {
@@ -449,13 +591,35 @@ const clearSearch = () => {
   debouncedLoadProducts()
 }
 
+const syncSelectedCategoryFromRoute = () => {
+  if (route.name !== 'category-products') {
+    if (selectedCategory.value !== null) {
+      selectedCategory.value = null
+    }
+    return false
+  }
+
+  const slugParam = route.params.slug as string | undefined
+  if (!slugParam || categories.value.length === 0) return false
+
+  const matched = categories.value.find((category) => category.slug === slugParam)
+  if (!matched) return false
+
+  if (selectedCategory.value !== matched.id) {
+    selectedCategory.value = matched.id
+  }
+
+  return true
+}
+
 watch(selectedCategory, () => {
   currentPage.value = 1
+  syncExpandedCategoryState()
   debouncedLoadProducts()
   // 同步 URL：分类切换时更新地址栏
   if (selectedCategory.value) {
-    const matched = categories.value.find((c: any) => c.id === selectedCategory.value)
-    if (matched?.slug) {
+    const matched = categories.value.find((category) => category.id === selectedCategory.value)
+    if (matched?.slug && route.params.slug !== matched.slug) {
       router.replace({ name: 'category-products', params: { slug: matched.slug } })
     }
   } else if (route.name === 'category-products') {
@@ -468,18 +632,20 @@ watch(searchQuery, () => {
   debouncedLoadProducts()
 })
 
+watch(
+  () => route.params.slug,
+  () => {
+    if (categories.value.length === 0) return
+    syncSelectedCategoryFromRoute()
+  },
+)
+
 onMounted(async () => {
   window.addEventListener('resize', handleResize, { passive: true })
   await debouncedLoadCategories()
-  // 如果是 /categories/:slug 路由，根据 slug 自动选中分类
-  const slugParam = route.params.slug as string | undefined
-  if (slugParam && categories.value.length > 0) {
-    const matched = categories.value.find((c: any) => c.slug === slugParam)
-    if (matched) {
-      selectedCategory.value = matched.id
-      // watch 会触发 loadProducts，无需手动调用
-      return
-    }
+  if (syncSelectedCategoryFromRoute()) {
+    syncExpandedCategoryState()
+    return
   }
   await debouncedLoadProducts()
 })
