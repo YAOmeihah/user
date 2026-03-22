@@ -572,6 +572,7 @@ const loadCategories = async () => {
 
 const debouncedLoadProducts = debounceAsync(loadProducts, 300)
 const debouncedLoadCategories = debounceAsync(loadCategories, 250)
+let initializing = true
 
 const goToProduct = (slug: string) => {
   router.push(`/products/${slug}`)
@@ -613,6 +614,7 @@ const syncSelectedCategoryFromRoute = () => {
 }
 
 watch(selectedCategory, () => {
+  if (initializing) return
   currentPage.value = 1
   syncExpandedCategoryState()
   debouncedLoadProducts()
@@ -628,6 +630,7 @@ watch(selectedCategory, () => {
 })
 
 watch(searchQuery, () => {
+  if (initializing) return
   currentPage.value = 1
   debouncedLoadProducts()
 })
@@ -635,6 +638,7 @@ watch(searchQuery, () => {
 watch(
   () => route.params.slug,
   () => {
+    if (initializing) return
     if (categories.value.length === 0) return
     syncSelectedCategoryFromRoute()
   },
@@ -642,12 +646,15 @@ watch(
 
 onMounted(async () => {
   window.addEventListener('resize', handleResize, { passive: true })
-  await debouncedLoadCategories()
+  await loadCategories()
   if (syncSelectedCategoryFromRoute()) {
     syncExpandedCategoryState()
+    await loadProducts()
+    initializing = false
     return
   }
-  await debouncedLoadProducts()
+  await loadProducts()
+  initializing = false
 })
 
 onUnmounted(() => {

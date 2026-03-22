@@ -180,7 +180,6 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { bannerAPI, postAPI, productAPI } from '../api'
 import { getImageUrl } from '../utils/image'
-import { debounceAsync } from '../utils/debounce'
 import { useLocalized } from '../composables/useProduct'
 import ProductCard from '../components/ProductCard.vue'
 
@@ -366,18 +365,11 @@ const loadHeroBanners = async () => {
   }
 }
 
-const debouncedLoadFeaturedProducts = debounceAsync(loadFeaturedProducts, 250)
-const debouncedLoadLatestPosts = debounceAsync(loadLatestPosts, 250)
-const debouncedLoadHeroBanners = debounceAsync(loadHeroBanners, 250)
-
 onMounted(async () => {
-  await Promise.all([debouncedLoadHeroBanners(), debouncedLoadFeaturedProducts(), debouncedLoadLatestPosts()])
+  await Promise.all([loadHeroBanners(), loadFeaturedProducts(), loadLatestPosts()])
 })
 
 onUnmounted(() => {
-  debouncedLoadFeaturedProducts.cancel()
-  debouncedLoadLatestPosts.cancel()
-  debouncedLoadHeroBanners.cancel()
   stopHeroAutoPlay()
 })
 </script>

@@ -154,7 +154,7 @@ const loadPost = async () => {
 const debouncedLoadPost = debounceAsync(loadPost, 300)
 
 onMounted(() => {
-  debouncedLoadPost()
+  loadPost()
 })
 
 onUnmounted(() => {

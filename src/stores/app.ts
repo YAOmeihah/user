@@ -8,6 +8,7 @@ export const useAppStore = defineStore('app', () => {
     const locale = ref(localStorage.getItem('locale') || 'zh-CN')
     const config = ref<any>(null)
     const loading = ref(false)
+    const navigating = ref(false)
     // 服务器与客户端的时间偏移量（毫秒），serverTime = clientTime + offset
     const serverTimeOffset = ref(0)
 
@@ -103,15 +104,26 @@ export const useAppStore = defineStore('app', () => {
     // 获取校正后的服务器当前 Date 对象
     const getServerDate = () => new Date(getServerTime())
 
+    const startNavigating = () => {
+        navigating.value = true
+    }
+
+    const stopNavigating = () => {
+        navigating.value = false
+    }
+
     return {
         locale,
         config,
         loading,
+        navigating,
         serverTimeOffset,
         setLocale,
         loadConfig,
         applySEO,
         getServerTime,
-        getServerDate
+        getServerDate,
+        startNavigating,
+        stopNavigating,
     }
 })

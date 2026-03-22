@@ -480,7 +480,7 @@ onMounted(() => {
     router.push('/me/orders')
     return
   }
-  debouncedLoadOrder()
+  loadOrder()
 })
 
 onUnmounted(() => {

@@ -497,7 +497,7 @@ onMounted(() => {
     return
   }
   loadSavedAuth()
-  debouncedLoadOrder()
+  loadOrder()
 })
 
 const persistAuth = () => {

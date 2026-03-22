@@ -177,7 +177,7 @@ const changePage = (page: number) => {
 }
 
 onMounted(() => {
-  debouncedLoadPosts()
+  loadPosts()
 })
 
 onUnmounted(() => {

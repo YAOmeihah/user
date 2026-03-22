@@ -789,7 +789,7 @@ useHead({
 })
 
 onMounted(() => {
-  debouncedLoadProduct()
+  loadProduct()
 })
 
 watch(

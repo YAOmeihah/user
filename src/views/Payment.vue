@@ -1313,7 +1313,7 @@ onMounted(() => {
     email: savedAuth.email || '',
     order_password: savedAuth.order_password || '',
   }
-  debouncedLoadOrder()
+  loadOrder()
   void loadWallet()
   if (!appStore.config || !Array.isArray(appStore.config?.payment_channels)) {
     appStore.loadConfig(true)

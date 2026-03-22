@@ -9,7 +9,7 @@
       </RouterView>
     </main>
     <Footer />
-    <Loading :loading="appStore.loading" />
+    <Loading :loading="appStore.loading || appStore.navigating" />
     <Toast />
     <BackToTop />
     <MobileBottomNav />

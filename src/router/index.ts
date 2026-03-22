@@ -4,6 +4,99 @@ import { useAppStore } from '../stores/app'
 import { useTelegramMiniAppStore } from '../stores/telegramMiniApp'
 import { captureAffiliateFromRoute } from '../utils/affiliate'
 
+type RouteComponentLoader = () => Promise<unknown>
+
+const homeViewLoader: RouteComponentLoader = () => import('../views/Home.vue')
+const productsViewLoader: RouteComponentLoader = () => import('../views/Products.vue')
+const productDetailViewLoader: RouteComponentLoader = () => import('../views/ProductDetail.vue')
+const cartViewLoader: RouteComponentLoader = () => import('../views/Cart.vue')
+const checkoutViewLoader: RouteComponentLoader = () => import('../views/Checkout.vue')
+const paymentViewLoader: RouteComponentLoader = () => import('../views/Payment.vue')
+const blogViewLoader: RouteComponentLoader = () => import('../views/Blog.vue')
+const noticeViewLoader: RouteComponentLoader = () => import('../views/Notice.vue')
+const loginViewLoader: RouteComponentLoader = () => import('../views/auth/Login.vue')
+
+const routeWarmupLoaders: RouteComponentLoader[] = [
+    productsViewLoader,
+    productDetailViewLoader,
+    cartViewLoader,
+    checkoutViewLoader,
+    paymentViewLoader,
+    blogViewLoader,
+    noticeViewLoader,
+    loginViewLoader,
+]
+
+let hasScheduledRouteWarmup = false
+
+const shouldWarmupRoutes = () => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+        return false
+    }
+
+    const connection = (navigator as Navigator & {
+        connection?: {
+            saveData?: boolean
+            effectiveType?: string
+        }
+    }).connection
+
+    if (connection?.saveData) {
+        return false
+    }
+
+    return connection?.effectiveType !== 'slow-2g' && connection?.effectiveType !== '2g'
+}
+
+const scheduleIdleTask = (task: () => void) => {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    if ('requestIdleCallback' in window && typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(task, { timeout: 1500 })
+        return
+    }
+
+    window.setTimeout(task, 600)
+}
+
+const runRouteWarmupQueue = (loaders: RouteComponentLoader[]) => {
+    const nextLoader = loaders.shift()
+    if (!nextLoader || typeof window === 'undefined') {
+        return
+    }
+
+    void nextLoader()
+        .catch(() => undefined)
+        .finally(() => {
+            window.setTimeout(() => {
+                scheduleIdleTask(() => runRouteWarmupQueue(loaders))
+            }, 400)
+        })
+}
+
+export const warmupCommonRoutes = () => {
+    if (hasScheduledRouteWarmup || !shouldWarmupRoutes()) {
+        return
+    }
+
+    hasScheduledRouteWarmup = true
+
+    const startWarmup = () => {
+        window.setTimeout(() => {
+            scheduleIdleTask(() => runRouteWarmupQueue([...routeWarmupLoaders]))
+        }, 1200)
+    }
+
+    if (document.readyState === 'complete') {
+        startWarmup()
+        return
+    }
+
+    window.addEventListener('load', startWarmup, { once: true })
+}
+
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     scrollBehavior(to, _from, savedPosition) {
@@ -19,37 +112,37 @@ const router = createRouter({
         {
             path: '/',
             name: 'home',
-            component: () => import('../views/Home.vue'),
+            component: homeViewLoader,
         },
         {
             path: '/products',
             name: 'products',
-            component: () => import('../views/Products.vue'),
+            component: productsViewLoader,
         },
         {
             path: '/categories/:slug',
             name: 'category-products',
-            component: () => import('../views/Products.vue'),
+            component: productsViewLoader,
         },
         {
             path: '/products/:slug',
             name: 'product-detail',
-            component: () => import('../views/ProductDetail.vue'),
+            component: productDetailViewLoader,
         },
         {
             path: '/cart',
             name: 'cart',
-            component: () => import('../views/Cart.vue'),
+            component: cartViewLoader,
         },
         {
             path: '/checkout',
             name: 'checkout',
-            component: () => import('../views/Checkout.vue'),
+            component: checkoutViewLoader,
         },
         {
             path: '/pay',
             name: 'payment',
-            component: () => import('../views/Payment.vue'),
+            component: paymentViewLoader,
         },
         {
             path: '/me',
@@ -126,7 +219,7 @@ const router = createRouter({
         {
             path: '/blog',
             name: 'blog',
-            component: () => import('../views/Blog.vue'),
+            component: blogViewLoader,
         },
         {
             path: '/blog/:slug',
@@ -136,7 +229,7 @@ const router = createRouter({
         {
             path: '/notice',
             name: 'notice',
-            component: () => import('../views/Notice.vue'),
+            component: noticeViewLoader,
         },
         {
             path: '/about',
@@ -158,7 +251,7 @@ const router = createRouter({
         {
             path: '/auth/login',
             name: 'user-login',
-            component: () => import('../views/auth/Login.vue'),
+            component: loginViewLoader,
             meta: { userGuest: true }
         },
         {
@@ -184,7 +277,9 @@ const router = createRouter({
 // Navigation Guard
 router.beforeEach(async (to, _from, next) => {
     const userAuthStore = useUserAuthStore()
+    const appStore = useAppStore()
     void captureAffiliateFromRoute(to)
+    appStore.startNavigating()
 
     if (to.meta.requiresUserAuth) {
         if (!userAuthStore.isAuthenticated) {
@@ -210,6 +305,7 @@ router.beforeEach(async (to, _from, next) => {
 router.afterEach(() => {
     const appStore = useAppStore()
     const telegramMiniAppStore = useTelegramMiniAppStore()
+    appStore.stopNavigating()
     appStore.applySEO()
     telegramMiniAppStore.syncRouteBackButton(router.currentRoute.value.path, () => {
         if (window.history.length > 1) {
@@ -218,6 +314,11 @@ router.afterEach(() => {
         }
         void router.push('/')
     })
+})
+
+router.onError(() => {
+    const appStore = useAppStore()
+    appStore.stopNavigating()
 })
 
 export default router

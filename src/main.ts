@@ -3,7 +3,7 @@ import { createPinia } from 'pinia'
 import { createHead } from '@unhead/vue/client'
 import './style.css'
 import App from './App.vue'
-import router from './router'
+import router, { warmupCommonRoutes } from './router'
 import i18n from './i18n'
 import { useTelegramMiniAppStore } from './stores/telegramMiniApp'
 
@@ -19,3 +19,7 @@ app.use(i18n)
 useTelegramMiniAppStore(pinia).init()
 
 app.mount('#app')
+
+void router.isReady().then(() => {
+    warmupCommonRoutes()
+})
