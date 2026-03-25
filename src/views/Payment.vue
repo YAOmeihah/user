@@ -588,11 +588,11 @@ const cachedChannel = computed(() => findChannelByID(cachedPayment.value?.channe
 
 const selectedChannelName = computed(() => resolveChannelName(selectedChannel.value, selectedChannel.value?.channel_type))
 
-const cachedChannelName = computed(() => resolveChannelName(cachedChannel.value, cachedPayment.value?.channel_type))
+const cachedChannelName = computed(() => resolveChannelName(cachedChannel.value, cachedPayment.value?.channel_type, cachedPayment.value?.channel_name))
 
 const resultChannel = computed(() => findChannelByID(paymentResult.value?.channel_id))
 
-const resultChannelName = computed(() => resolveChannelName(resultChannel.value, paymentResult.value?.channel_type))
+const resultChannelName = computed(() => resolveChannelName(resultChannel.value, paymentResult.value?.channel_type, paymentResult.value?.channel_name))
 
 const interactionLabel = computed(() => {
   if (!paymentResult.value?.interaction_mode) return '-'
@@ -998,6 +998,11 @@ const loadLatestPayment = async () => {
       selectedChannelId.value = data.channel_id || null
       startPolling()
       startCountdown()
+      // 对 redirect 模式自动打开支付链接
+      const mode = String(data.interaction_mode || '').toLowerCase()
+      if (mode === 'redirect' && data.pay_url) {
+        openPayLinkInCompatibleWindow()
+      }
     }
   } catch (err) {
     // 没有历史支付记录时忽略错误
@@ -1351,8 +1356,10 @@ const channelTypeLabel = (value?: string) => {
   return map[value] || value
 }
 
-const resolveChannelName = (channel?: any, fallbackChannelType?: unknown) => {
+const resolveChannelName = (channel?: any, fallbackChannelType?: unknown, apiChannelName?: unknown) => {
   if (channel?.name) return channel.name
+  const name = String(apiChannelName || '').trim()
+  if (name) return name
   const channelType = String(fallbackChannelType || '').trim()
   if (channelType) return channelTypeLabel(channelType)
   return '-'

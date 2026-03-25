@@ -638,7 +638,10 @@ const messages = {
             couponRefreshing: '优惠码已更新，正在重新计算...',
             stockSyncing: '正在同步最新库存，请稍候...',
             previewFailed: '价格预览失败',
-            submitButton: '提交订单',
+            paymentMethod: '支付方式',
+            noPaymentChannels: '暂无可用的支付方式',
+            walletCoversAll: '钱包余额足以支付全部金额',
+            submitButton: '提交订单并支付',
             submitting: '提交中...',
             errors: {
                 emptyCart: '购物车为空',
@@ -646,6 +649,7 @@ const messages = {
                 loginOrGuest: '请先登录或使用游客购买',
                 submitFailed: '提交失败，请稍后重试',
                 manualFormInvalid: '请完善交付信息后再提交',
+                selectPayment: '请选择支付方式',
             },
         },
         payment: {
@@ -1574,7 +1578,10 @@ const messages = {
             couponRefreshing: '優惠碼已更新，正在重新計算...',
             stockSyncing: '正在同步最新庫存，請稍候...',
             previewFailed: '價格預覽失敗',
-            submitButton: '提交訂單',
+            paymentMethod: '支付方式',
+            noPaymentChannels: '暫無可用的支付方式',
+            walletCoversAll: '錢包餘額足以支付全部金額',
+            submitButton: '提交訂單並支付',
             submitting: '提交中...',
             errors: {
                 emptyCart: '購物車為空',
@@ -1582,6 +1589,7 @@ const messages = {
                 loginOrGuest: '請先登入或使用遊客購買',
                 submitFailed: '提交失敗，請稍後重試',
                 manualFormInvalid: '請先完善交付資訊再提交',
+                selectPayment: '請選擇支付方式',
             },
         },
         payment: {
@@ -2472,7 +2480,10 @@ const messages = {
             couponRefreshing: 'Coupon updated, recalculating...',
             stockSyncing: 'Syncing latest stock, please wait...',
             previewFailed: 'Failed to preview price',
-            submitButton: 'Place order',
+            paymentMethod: 'Payment Method',
+            noPaymentChannels: 'No payment methods available',
+            walletCoversAll: 'Wallet balance covers the full amount',
+            submitButton: 'Place Order & Pay',
             submitting: 'Submitting...',
             errors: {
                 emptyCart: 'Your cart is empty',
@@ -2480,6 +2491,7 @@ const messages = {
                 loginOrGuest: 'Please login or use guest checkout',
                 submitFailed: 'Submit failed, please try again',
                 manualFormInvalid: 'Please complete required information before submitting',
+                selectPayment: 'Please select a payment method',
             },
         },
         payment: {

@@ -401,6 +401,7 @@ import { productAPI } from '../api'
 import { getImageUrl } from '../utils/image'
 import { processHtmlForDisplay } from '../utils/content'
 import { useCartStore } from '../stores/cart'
+import { useBuyNowStore } from '../stores/buyNow'
 import { useUserAuthStore } from '../stores/userAuth'
 import { debounceAsync } from '../utils/debounce'
 import { useHead } from '@unhead/vue'
@@ -414,6 +415,7 @@ const router = useRouter()
 const { t } = useI18n()
 const appStore = useAppStore()
 const cartStore = useCartStore()
+const buyNowStore = useBuyNowStore()
 const userAuthStore = useUserAuthStore()
 
 const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
@@ -706,9 +708,48 @@ const addToCart = () => {
 const buyNow = () => {
   purchaseWarning.value = ''
   if (!canPurchase.value) return
-  addToCart()
-  if (purchaseWarning.value) return
-  router.push('/cart')
+  if (!product.value) return
+  if (requiresLogin.value) {
+    router.push(`/auth/login?redirect=${encodeURIComponent(route.fullPath)}`)
+    return
+  }
+
+  const sku = selectedSku.value
+  const available = skuAvailableStock(sku)
+  const productLimit = normalizeOptionalLimitNumber(product.value?.max_purchase_quantity)
+  let limit: number | null = productLimit
+  if (available !== null) {
+    limit = limit === null ? available : Math.min(limit, available)
+  }
+  if (limit !== null && 1 > limit) {
+    purchaseWarning.value = available !== null && limit === available
+      ? (available > 0 ? t('productDetail.addCartStockExceeded', { count: available }) : t('productDetail.stockUnavailable'))
+      : t('productDetail.addCartLimitExceeded', { count: limit })
+    return
+  }
+
+  buyNowStore.setItem({
+    productId: product.value.id,
+    skuId: normalizeSkuId(sku?.id),
+    skuCode: String(sku?.sku_code || ''),
+    skuSpecValues: (sku?.spec_values && typeof sku.spec_values === 'object') ? sku.spec_values : undefined,
+    skuManualStockTotal: normalizeManualStockTotal(sku?.manual_stock_total),
+    skuManualStockLocked: normalizeStockNumber(sku?.manual_stock_locked),
+    skuManualStockSold: normalizeStockNumber(sku?.manual_stock_sold),
+    skuAutoStockAvailable: normalizeStockNumber(sku?.auto_stock_available),
+    skuUpstreamStock: normalizeManualStockTotal(sku?.upstream_stock),
+    skuStockEnforced: shouldEnforceSkuStock(sku),
+    slug: product.value.slug,
+    title: product.value.title,
+    priceAmount: String(sku?.price_amount || product.value.price_amount || '0.00'),
+    image: images.value[0],
+    maxPurchaseQuantity: normalizeOptionalLimitNumber(product.value.max_purchase_quantity) ?? undefined,
+    purchaseType: product.value.purchase_type,
+    fulfillmentType: product.value.fulfillment_type,
+    manualFormSchema: product.value.manual_form_schema || {},
+    quantity: 1,
+  })
+  router.push('/checkout?mode=buynow')
 }
 
 const goLogin = () => {

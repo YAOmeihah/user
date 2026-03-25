@@ -237,9 +237,14 @@
                     <path stroke-linecap="round" d="M20 12H4" />
                   </svg>
                 </button>
-                <span class="w-10 text-center text-sm font-semibold theme-text-primary border-x theme-border leading-9 tabular-nums">
-                  {{ quantity }}
-                </span>
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  class="w-12 h-9 text-center text-sm font-semibold theme-text-primary border-x theme-border bg-transparent outline-none tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  :value="quantity"
+                  @change="handleQuantityInput($event)"
+                  @keydown.enter.prevent="($event.target as HTMLInputElement)?.blur()"
+                />
                 <button
                   type="button"
                   class="w-9 h-9 flex items-center justify-center theme-text-secondary hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-30"
@@ -309,6 +314,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
 import { useCartStore } from '../stores/cart'
+import { useBuyNowStore } from '../stores/buyNow'
 import { useUserAuthStore } from '../stores/userAuth'
 import { getFirstImageUrl, getImageUrl } from '../utils/image'
 import { normalizeSkuId, buildSkuDisplayText } from '../utils/sku'
@@ -329,6 +335,7 @@ const route = useRoute()
 const { t } = useI18n()
 const appStore = useAppStore()
 const cartStore = useCartStore()
+const buyNowStore = useBuyNowStore()
 const userAuthStore = useUserAuthStore()
 
 const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
@@ -525,6 +532,23 @@ const effectiveLimit = computed(() => {
   return limit
 })
 
+const handleQuantityInput = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const parsed = Math.floor(Number(input.value))
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    quantity.value = 1
+    input.value = '1'
+    return
+  }
+  const limit = effectiveLimit.value
+  if (limit !== null && parsed > limit) {
+    quantity.value = limit
+    input.value = String(limit)
+    return
+  }
+  quantity.value = parsed
+}
+
 const close = () => {
   emit('update:visible', false)
 }
@@ -586,9 +610,46 @@ const handleAddToCart = () => {
 const handleBuyNow = () => {
   purchaseWarning.value = ''
   if (!canPurchase.value) return
-  handleAddToCart()
-  if (purchaseWarning.value) return
-  router.push('/cart')
+  if (!props.product) return
+
+  const sku = selectedSku.value
+  const available = skuAvailableStock(sku)
+  const productLimit = normalizeOptionalLimitNumber(props.product?.max_purchase_quantity)
+  let limit: number | null = productLimit
+  if (available !== null) {
+    limit = limit === null ? available : Math.min(limit, available)
+  }
+  if (limit !== null && quantity.value > limit) {
+    purchaseWarning.value = available !== null && limit === available && (productLimit === null || available <= productLimit)
+      ? (available > 0 ? t('productDetail.addCartStockExceeded', { count: available }) : t('productDetail.stockUnavailable'))
+      : t('productDetail.addCartLimitExceeded', { count: limit })
+    return
+  }
+
+  const images = getProductImages()
+  buyNowStore.setItem({
+    productId: props.product.id,
+    skuId: normalizeSkuId(sku?.id),
+    skuCode: String(sku?.sku_code || ''),
+    skuSpecValues: (sku?.spec_values && typeof sku.spec_values === 'object') ? sku.spec_values : undefined,
+    skuManualStockTotal: normalizeManualStockTotal(sku?.manual_stock_total),
+    skuManualStockLocked: normalizeStockNumber(sku?.manual_stock_locked),
+    skuManualStockSold: normalizeStockNumber(sku?.manual_stock_sold),
+    skuAutoStockAvailable: normalizeStockNumber(sku?.auto_stock_available),
+    skuUpstreamStock: normalizeManualStockTotal(sku?.upstream_stock),
+    skuStockEnforced: shouldEnforceSkuStock(sku),
+    slug: props.product.slug,
+    title: props.product.title,
+    priceAmount: String(sku?.price_amount || props.product.price_amount || '0.00'),
+    image: images[0] || '',
+    maxPurchaseQuantity: normalizeOptionalLimitNumber(props.product.max_purchase_quantity) ?? undefined,
+    purchaseType: props.product.purchase_type,
+    fulfillmentType: props.product.fulfillment_type,
+    manualFormSchema: props.product.manual_form_schema || {},
+    quantity: quantity.value,
+  })
+  close()
+  router.push('/checkout?mode=buynow')
 }
 
 const goLogin = () => {

@@ -324,6 +324,52 @@
             {{ checkoutAlert.message }}
           </div>
 
+          <!-- Payment Channel Selection -->
+          <div class="mb-4 border-t theme-border pt-4">
+            <h3 class="mb-3 text-sm font-bold theme-text-primary">{{ t('checkout.paymentMethod') }}</h3>
+
+            <!-- Wallet Balance -->
+            <div v-if="showBalanceOption" class="mb-3 rounded-lg border theme-surface-soft p-3">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-xs theme-text-muted">{{ t('payment.walletBalanceLabel') }}</div>
+                  <div class="mt-0.5 text-sm font-semibold theme-text-primary">
+                    {{ walletLoading ? t('common.loading') : formatPrice(walletBalance, previewCurrency) }}
+                  </div>
+                </div>
+                <label class="inline-flex items-center gap-2 text-xs theme-text-secondary">
+                  <input v-model="useBalance" type="checkbox" class="h-4 w-4 accent-primary" />
+                  <span>{{ t('payment.useBalance') }}</span>
+                </label>
+              </div>
+              <div v-if="useBalance" class="mt-2 space-y-1 text-xs theme-text-muted">
+                <div>{{ t('payment.walletDeductLabel') }}：{{ expectedWalletPaidDisplay }}</div>
+                <div>{{ t('payment.onlinePayLabel') }}：{{ expectedOnlinePayDisplay }}</div>
+              </div>
+            </div>
+
+            <!-- Channel Grid -->
+            <div v-if="requiresOnlineChannel && paymentChannels.length > 0" class="grid grid-cols-2 gap-2">
+              <button v-for="channel in paymentChannels" :key="channel.id"
+                type="button"
+                @click="selectedChannelId = channel.id"
+                class="text-left border rounded-lg p-2.5 transition-colors"
+                :class="selectedChannelId === channel.id ? 'theme-selected-surface' : 'theme-interactive-surface'">
+                <div class="text-sm theme-text-primary font-medium truncate">{{ channel.name }}</div>
+                <div class="mt-1 space-y-0.5 text-xs theme-text-muted">
+                  <div>{{ t('payment.feeLabel') }}：{{ formatChannelFeeRate(channel) }}</div>
+                  <div>{{ t('payment.fixedFeeLabel') }}：{{ formatChannelFixedFee(channel) }}</div>
+                </div>
+              </button>
+            </div>
+            <div v-else-if="requiresOnlineChannel && paymentChannels.length === 0" class="text-xs theme-text-muted">
+              {{ t('checkout.noPaymentChannels') }}
+            </div>
+            <div v-else-if="!requiresOnlineChannel" class="text-xs text-emerald-600 dark:text-emerald-400">
+              {{ t('checkout.walletCoversAll') }}
+            </div>
+          </div>
+
           <button
             @click="handleSubmit"
             :disabled="!canSubmit"
@@ -339,15 +385,16 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCartStore, type CartItem } from '../stores/cart'
+import { useBuyNowStore } from '../stores/buyNow'
 import { useAppStore } from '../stores/app'
 import { useUserAuthStore } from '../stores/userAuth'
-import { guestOrderAPI, userOrderAPI, type CaptchaPayload } from '../api'
+import { guestOrderAPI, userOrderAPI, walletAPI, type CaptchaPayload } from '../api'
 import { debounceAsync } from '../utils/debounce'
 import { pageAlertClass, type PageAlert } from '../utils/alerts'
-import { amountToCents, centsToAmount, parseInteger } from '../utils/money'
+import { amountToCents, basisPointsToPercent, centsToAmount, parseInteger, rateToBasisPoints } from '../utils/money'
 import { buildSkuDisplayText, normalizeSkuId } from '../utils/sku'
 import { refreshCartStockSnapshots } from '../utils/cartStock'
 import { getImageUrl } from '../utils/image'
@@ -357,15 +404,23 @@ import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
 import { useLocalized } from '../composables/useProduct'
 
 const router = useRouter()
+const route = useRoute()
 const cartStore = useCartStore()
+const buyNowStore = useBuyNowStore()
 const appStore = useAppStore()
 const userAuthStore = useUserAuthStore()
 const { t } = useI18n()
 
 const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
 
-const cartItems = computed(() => cartStore.items)
-const totalItems = computed(() => cartStore.totalItems)
+const isBuyNowMode = computed(() => route.query.mode === 'buynow')
+const cartItems = computed<CartItem[]>(() => {
+  if (isBuyNowMode.value) {
+    return buyNowStore.item ? [buyNowStore.item] : []
+  }
+  return cartStore.items
+})
+const totalItems = computed(() => cartItems.value.reduce((sum, item) => sum + item.quantity, 0))
 const couponCode = ref('')
 const normalizedCouponCode = computed(() => couponCode.value.trim())
 const submitting = ref(false)
@@ -376,6 +431,61 @@ const previewError = ref('')
 const previewRequestId = ref(0)
 const couponRefreshing = ref(false)
 const syncingStock = ref(false)
+
+// Payment state
+const selectedChannelId = ref<number | null>(null)
+const useBalance = ref(false)
+const walletLoading = ref(false)
+const walletBalance = ref('0')
+
+// Payment channels
+const paymentChannels = computed(() => {
+  const list = appStore.config?.payment_channels
+  if (!Array.isArray(list)) return []
+  return list.filter((channel: any) => {
+    const providerType = String(channel?.provider_type || '').toLowerCase()
+    const channelType = String(channel?.channel_type || '').toLowerCase()
+    if (providerType === 'epay') {
+      return ['wechat', 'wxpay', 'alipay', 'qqpay'].includes(channelType)
+    }
+    return true
+  })
+})
+
+const showBalanceOption = computed(() => userAuthStore.isAuthenticated)
+const expectedWalletPaidCents = computed(() => {
+  if (!showBalanceOption.value || !useBalance.value) return 0
+  const balance = amountToCents(walletBalance.value)
+  const total = amountToCents(previewTotal.value)
+  if (balance === null || total === null) return 0
+  return Math.min(balance, total)
+})
+const expectedOnlinePayCents = computed(() => {
+  const total = amountToCents(previewTotal.value)
+  if (total === null) return 0
+  return Math.max(total - expectedWalletPaidCents.value, 0)
+})
+const expectedWalletPaidDisplay = computed(() => formatPrice(centsToAmount(expectedWalletPaidCents.value), previewCurrency.value))
+const expectedOnlinePayDisplay = computed(() => formatPrice(centsToAmount(expectedOnlinePayCents.value), previewCurrency.value))
+const requiresOnlineChannel = computed(() => {
+  if (!userAuthStore.isAuthenticated) return true
+  if (!useBalance.value) return true
+  return expectedOnlinePayCents.value > 0
+})
+
+const formatChannelFeeRate = (channel?: any) => {
+  const bp = rateToBasisPoints(channel?.fee_rate)
+  if (bp === null) return '0.00%'
+  return `${basisPointsToPercent(bp)}%`
+}
+
+const formatChannelFixedFee = (channel?: any) => {
+  const fixed = channel?.fixed_fee
+  if (fixed === null || fixed === undefined || fixed === '' || Number(fixed) === 0) {
+    return formatPrice('0.00', previewCurrency.value)
+  }
+  return formatPrice(String(fixed), previewCurrency.value)
+}
 
 const totalAmount = computed(() => {
   const totalCents = cartItems.value.reduce((sum, item) => {
@@ -695,11 +805,19 @@ const buildManualFormDataPayload = () => {
 
 const manualFormFingerprint = computed(() => JSON.stringify(manualFormData.value))
 
-const flowSteps = computed(() => ([
-  { key: 'cart', label: t('cart.title'), active: false },
-  { key: 'checkout', label: t('checkout.title'), active: true },
-  { key: 'payment', label: t('payment.title'), active: false },
-]))
+const flowSteps = computed(() => {
+  if (isBuyNowMode.value) {
+    return [
+      { key: 'checkout', label: t('checkout.title'), active: true },
+      { key: 'payment', label: t('payment.title'), active: false },
+    ]
+  }
+  return [
+    { key: 'cart', label: t('cart.title'), active: false },
+    { key: 'checkout', label: t('checkout.title'), active: true },
+    { key: 'payment', label: t('payment.title'), active: false },
+  ]
+})
 
 const isGuestCheckout = computed(() => !userAuthStore.isAuthenticated && checkoutMode.value === 'guest')
 const guestEmailValid = computed(() => {
@@ -743,6 +861,7 @@ const canSubmit = computed(() => {
   if (cartItems.value.length === 0) return false
   if (!manualFormValidation.value.valid) return false
   if (cartItems.value.some((item) => itemStockExceeded(item))) return false
+  if (requiresOnlineChannel.value && !selectedChannelId.value) return false
   if (userAuthStore.isAuthenticated) return true
   if (checkoutMode.value !== 'guest') return false
   if (!guestEmail.value.trim() || !guestPassword.value.trim() || !guestEmailValid.value) return false
@@ -766,6 +885,7 @@ const submitBlockedReason = computed(() => {
   if (stockBlockedItem) {
     return itemStockHint(stockBlockedItem) || t('cart.stockOut')
   }
+  if (requiresOnlineChannel.value && !selectedChannelId.value) return t('checkout.errors.selectPayment')
   if (userAuthStore.isAuthenticated) return ''
   if (checkoutMode.value !== 'guest') return t('checkout.errors.loginOrGuest')
   if (!guestEmail.value.trim() || !guestPassword.value.trim()) return t('checkout.errors.missingGuest')
@@ -814,6 +934,7 @@ const buildOrderPayload = () => ({
 })
 
 const syncCartStockSnapshots = async () => {
+  if (isBuyNowMode.value) return
   if (syncingStock.value) return
   syncingStock.value = true
   try {
@@ -894,6 +1015,14 @@ const loadPreviewNow = async () => {
   await loadPreview()
 }
 
+const clearSourceStore = () => {
+  if (isBuyNowMode.value) {
+    buyNowStore.clear()
+  } else {
+    cartStore.clear()
+  }
+}
+
 const handleSubmit = async () => {
   submitAttempted.value = true
   error.value = ''
@@ -912,35 +1041,42 @@ const handleSubmit = async () => {
       return
     }
 
-    if (userAuthStore.isAuthenticated) {
-      const response = await userOrderAPI.create(buildOrderPayload())
-      const orderNo = String(response.data.data?.order_no || '').trim()
-      if (!orderNo) {
-        throw new Error(t('checkout.errors.submitFailed'))
-      }
-      cartStore.clear()
-      router.push(`/pay?order_no=${encodeURIComponent(orderNo)}`)
-      return
+    const payload = {
+      ...buildOrderPayload(),
+      channel_id: requiresOnlineChannel.value ? (selectedChannelId.value || undefined) : undefined,
+      use_balance: useBalance.value,
     }
 
-    const response = await guestOrderAPI.create({
-      ...buildOrderPayload(),
-      email: guestEmail.value.trim(),
-      order_password: guestPassword.value,
-      captcha_payload: getGuestCaptchaPayload(),
-    })
+    let responseData: any
 
-    localStorage.setItem('guest_order_auth', JSON.stringify({
-      email: guestEmail.value.trim(),
-      order_password: guestPassword.value,
-    }))
+    if (userAuthStore.isAuthenticated) {
+      const response = await userOrderAPI.createAndPay(payload)
+      responseData = response.data.data
+    } else {
+      const response = await guestOrderAPI.createAndPay({
+        ...payload,
+        email: guestEmail.value.trim(),
+        order_password: guestPassword.value,
+        captcha_payload: getGuestCaptchaPayload(),
+      })
+      localStorage.setItem('guest_order_auth', JSON.stringify({
+        email: guestEmail.value.trim(),
+        order_password: guestPassword.value,
+      }))
+      responseData = response.data.data
+    }
 
-    const orderNo = String(response.data.data?.order_no || '').trim()
-    if (!orderNo) {
+    if (!responseData?.order_no) {
       throw new Error(t('checkout.errors.submitFailed'))
     }
-    cartStore.clear()
-    router.push(`/pay?guest=1&order_no=${encodeURIComponent(orderNo)}`)
+
+    clearSourceStore()
+
+    // Redirect to the existing Payment page which handles all payment display
+    const query = userAuthStore.isAuthenticated
+      ? `order_no=${encodeURIComponent(responseData.order_no)}`
+      : `guest=1&order_no=${encodeURIComponent(responseData.order_no)}`
+    router.push(`/pay?${query}`)
   } catch (err: any) {
     error.value = err.message || t('checkout.errors.submitFailed')
     if (guestCaptchaEnabled.value && captchaProvider.value === 'image') {
@@ -970,12 +1106,26 @@ watch(normalizedCouponCode, (value, previous) => {
   previewError.value = ''
 })
 
+const loadWalletBalance = async () => {
+  if (!userAuthStore.isAuthenticated) return
+  walletLoading.value = true
+  try {
+    const response = await walletAPI.account()
+    walletBalance.value = String(response.data.data?.balance || '0')
+  } catch {
+    walletBalance.value = '0'
+  } finally {
+    walletLoading.value = false
+  }
+}
+
 onMounted(async () => {
   if (!appStore.config) {
     await appStore.loadConfig()
   }
   await syncCartStockSnapshots()
   debouncedLoadPreview()
+  loadWalletBalance()
 })
 
 onUnmounted(() => {
