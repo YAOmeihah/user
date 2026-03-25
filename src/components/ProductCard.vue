@@ -115,22 +115,38 @@
           </div>
         </div>
 
-        <span
-          class="hidden md:flex text-xs uppercase font-bold transition-colors items-center gap-1"
-          :class="isSoldOut(product)
-            ? 'text-rose-500/90 dark:text-rose-300/90'
-            : 'text-gray-500 group-hover:text-gray-900 dark:group-hover:text-white'">
-          {{ t('common.viewDetails') }}
-          <svg class="w-4 h-4 transition-transform" :class="isSoldOut(product) ? '' : 'group-hover:translate-x-1'" fill="none"
-            stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M17 8l4 4m0 0l-4 4m4-4H3" />
+        <div class="flex items-center gap-2">
+          <!-- Quick buy cart button -->
+          <button
+            type="button"
+            class="relative flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-lg border transition-all"
+            :class="isSoldOut(product)
+              ? 'opacity-40 cursor-not-allowed border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600'
+              : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-900 hover:border-gray-400 hover:bg-gray-100 dark:hover:text-white dark:hover:border-gray-500 dark:hover:bg-gray-800'"
+            :disabled="isSoldOut(product)"
+            @click.stop="$emit('quickBuy', product)"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z" />
+            </svg>
+          </button>
+          <!-- Desktop: view details -->
+          <span
+            class="hidden md:flex text-xs uppercase font-bold transition-colors items-center gap-1"
+            :class="isSoldOut(product)
+              ? 'text-rose-500/90 dark:text-rose-300/90'
+              : 'text-gray-500 group-hover:text-gray-900 dark:group-hover:text-white'">
+            <svg class="w-4 h-4 transition-transform" :class="isSoldOut(product) ? '' : 'group-hover:translate-x-1'" fill="none"
+              stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </span>
+          <!-- Mobile: arrow only -->
+          <svg class="md:hidden w-4 h-4 theme-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
           </svg>
-        </span>
-        <!-- Mobile: arrow only -->
-        <svg class="md:hidden w-4 h-4 theme-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-        </svg>
+        </div>
       </div>
     </div>
   </div>
@@ -154,6 +170,7 @@ withDefaults(defineProps<{
 
 defineEmits<{
   click: [slug: string]
+  quickBuy: [product: any]
 }>()
 
 const { t } = useI18n()

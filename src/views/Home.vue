@@ -127,6 +127,7 @@
             :index="idx"
             :animation-step="60"
             @click="goToProduct"
+            @quick-buy="openQuickBuy"
           />
         </div>
         <div v-else class="rounded-2xl border border-dashed theme-border py-16 text-center theme-text-muted theme-slide-up">
@@ -171,6 +172,12 @@
         </div>
       </div>
     </section>
+    <ProductQuickBuy
+      v-if="quickBuyProduct"
+      :product="quickBuyProduct"
+      :visible="quickBuyVisible"
+      @update:visible="quickBuyVisible = $event"
+    />
   </div>
 </template>
 
@@ -182,6 +189,7 @@ import { bannerAPI, postAPI, productAPI } from '../api'
 import { getImageUrl } from '../utils/image'
 import { useLocalized } from '../composables/useProduct'
 import ProductCard from '../components/ProductCard.vue'
+import ProductQuickBuy from '../components/ProductQuickBuy.vue'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -190,6 +198,13 @@ const { getLocalizedText } = useLocalized()
 const products = ref<any[]>([])
 const posts = ref<any[]>([])
 const banners = ref<any[]>([])
+const quickBuyProduct = ref<any>(null)
+const quickBuyVisible = ref(false)
+
+const openQuickBuy = (product: any) => {
+  quickBuyProduct.value = product
+  quickBuyVisible.value = true
+}
 const bannerLoading = ref(true)
 
 const currentBannerIndex = ref(0)
