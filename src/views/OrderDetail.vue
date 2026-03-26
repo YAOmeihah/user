@@ -286,11 +286,11 @@
                   <div class="text-sm theme-text-muted">{{ t('orderDetail.fulfillmentStatus') }}：{{
                     fulfillmentStatusLabelText(child.fulfillment.status) }}</div>
                   <div v-if="fulfillmentDeliveryLines(child.fulfillment).length"
-                    class="mt-3 theme-surface-soft border rounded-xl p-4 text-sm theme-text-secondary space-y-1">
+                    class="mt-3 theme-surface-soft border rounded-xl p-4 text-sm theme-text-secondary space-y-1 break-all overflow-hidden">
                     <div v-for="(line, index) in fulfillmentDeliveryLines(child.fulfillment)" :key="`child-fulfillment-${child.id}-${index}`">{{ line }}</div>
                   </div>
                   <div v-else-if="child.fulfillment.payload"
-                    class="mt-3 theme-surface-soft border rounded-xl p-4 text-sm theme-text-secondary whitespace-pre-wrap">
+                    class="mt-3 theme-surface-soft border rounded-xl p-4 text-sm theme-text-secondary whitespace-pre-wrap break-all overflow-hidden">
                     {{ child.fulfillment.payload }}
                   </div>
                 </div>
@@ -316,11 +316,11 @@
           <div class="text-sm theme-text-muted">{{ t('orderDetail.fulfillmentStatus') }}：{{
             fulfillmentStatusLabelText(order.fulfillment.status) }}</div>
           <div v-if="fulfillmentDeliveryLines(order.fulfillment).length"
-            class="mt-4 theme-surface-soft border rounded-xl p-4 text-sm theme-text-secondary space-y-1">
+            class="mt-4 theme-surface-soft border rounded-xl p-4 text-sm theme-text-secondary space-y-1 break-all overflow-hidden">
             <div v-for="(line, index) in fulfillmentDeliveryLines(order.fulfillment)" :key="`fulfillment-${order.order_no || 'order'}-${index}`">{{ line }}</div>
           </div>
           <div v-else
-            class="mt-4 theme-surface-soft border rounded-xl p-4 text-sm theme-text-secondary whitespace-pre-wrap">
+            class="mt-4 theme-surface-soft border rounded-xl p-4 text-sm theme-text-secondary whitespace-pre-wrap break-all overflow-hidden">
             {{ order.fulfillment.payload }}
           </div>
         </div>
