@@ -81,27 +81,18 @@ export interface TelegramBindingData {
 }
 
 export interface WalletAccountData {
-    id: number
-    user_id: number
     balance: string
-    created_at: string
-    updated_at: string
 }
 
 export interface WalletTransactionData {
     id: number
-    user_id: number
     order_id?: number | null
     type: string
     direction: string
     amount: string
-    balance_before: string
     balance_after: string
-    currency: string
-    reference: string
     remark: string
     created_at: string
-    updated_at: string
 }
 
 export interface WalletRechargePayload {
@@ -114,46 +105,20 @@ export interface WalletRechargePayload {
 export interface WalletRechargeOrderData {
     id: number
     recharge_no: string
-    user_id: number
-    payment_id: number
-    channel_id: number
-    provider_type: string
-    channel_type: string
-    interaction_mode: string
     amount: string
     payable_amount: string
-    fee_rate: string
     fee_amount: string
     currency: string
     status: string
     remark: string
     paid_at?: string
     created_at: string
-    updated_at: string
-}
-
-export interface WalletRechargePaymentData {
-    id: number
-    order_id: number
-    channel_id: number
-    provider_type: string
-    channel_type: string
-    interaction_mode: string
-    amount: string
-    fee_rate: string
-    fee_amount: string
-    currency: string
-    status: string
-    pay_url?: string
-    qr_code?: string
-    expires_at?: string
-    created_at: string
-    updated_at: string
 }
 
 export interface WalletRechargeResult {
-    recharge: WalletRechargeOrderData
-    payment: WalletRechargePaymentData
+    recharge?: WalletRechargeOrderData
+    recharge_no?: string
+    recharge_status?: string
     account?: WalletAccountData
     payment_id?: number
     provider_type?: string
@@ -162,15 +127,24 @@ export interface WalletRechargeResult {
     pay_url?: string
     qr_code?: string
     expires_at?: string
-    recharge_no?: string
-    recharge_status?: string
+    status?: string
+}
+
+export interface GiftCardData {
+    id: number
+    name: string
+    code: string
+    amount: string
+    currency: string
+    status: string
+    redeemed_at?: string
 }
 
 export interface GiftCardRedeemResult {
-    gift_card: any
-    wallet?: WalletAccountData
-    transaction?: WalletTransactionData
-    wallet_delta?: string
+    gift_card: GiftCardData
+    wallet: WalletAccountData
+    transaction: WalletTransactionData
+    wallet_delta: string
 }
 
 export interface AffiliateDashboardData {
@@ -187,33 +161,23 @@ export interface AffiliateDashboardData {
 
 export interface AffiliateCommissionData {
     id: number
-    affiliate_profile_id: number
     order_id: number
     commission_type: string
-    base_amount: string
-    rate_percent: string
     commission_amount: string
     status: string
     confirm_at?: string
     available_at?: string
-    invalid_reason?: string
     created_at: string
-    order?: {
-        id: number
-        order_no: string
-    }
 }
 
 export interface AffiliateWithdrawData {
     id: number
-    affiliate_profile_id: number
     amount: string
     channel: string
     account: string
     status: string
     reject_reason?: string
     created_at: string
-    processed_at?: string
 }
 
 export interface AffiliateWithdrawApplyPayload {

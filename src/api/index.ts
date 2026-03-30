@@ -18,7 +18,6 @@ export type {
     WalletTransactionData,
     WalletRechargePayload,
     WalletRechargeOrderData,
-    WalletRechargePaymentData,
     WalletRechargeResult,
     GiftCardRedeemResult,
     AffiliateDashboardData,
