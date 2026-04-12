@@ -133,6 +133,25 @@
             :manual-field-error="manualFieldError"
           />
 
+          <div v-if="orderRequiresShippingAddress" class="rounded-2xl border theme-panel p-6">
+            <div class="mb-4">
+              <h2 class="text-lg font-bold theme-text-primary">{{ t('checkout.shippingTitle') }}</h2>
+              <p class="mt-1 text-sm theme-text-muted">{{ t('checkout.shippingTip') }}</p>
+            </div>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <input v-model="shippingAddress.receiver_name" type="text" class="w-full form-input-lg" :placeholder="t('checkout.shippingReceiverName')" />
+              <input v-model="shippingAddress.receiver_phone" type="text" class="w-full form-input-lg" :placeholder="t('checkout.shippingReceiverPhone')" />
+              <input v-model="shippingAddress.province" type="text" class="w-full form-input-lg" :placeholder="t('checkout.shippingProvince')" />
+              <input v-model="shippingAddress.city" type="text" class="w-full form-input-lg" :placeholder="t('checkout.shippingCity')" />
+              <input v-model="shippingAddress.district" type="text" class="w-full form-input-lg" :placeholder="t('checkout.shippingDistrict')" />
+              <input v-model="shippingAddress.postal_code" type="text" class="w-full form-input-lg" :placeholder="t('checkout.shippingPostalCode')" />
+              <input v-model="shippingAddress.detail_address" type="text" class="w-full form-input-lg md:col-span-2" :placeholder="t('checkout.shippingDetailAddress')" />
+            </div>
+            <p v-if="submitAttempted && !shippingAddressValidation.valid" class="mt-3 text-sm text-red-500">
+              {{ shippingAddressValidation.message }}
+            </p>
+          </div>
+
           <div class="rounded-2xl border theme-panel p-6">
             <h2 class="mb-4 text-lg font-bold theme-text-primary">{{ t('checkout.couponTitle') }}</h2>
             <input
@@ -835,6 +854,40 @@ const buildManualFormDataPayload = () => {
 }
 
 const manualFormFingerprint = computed(() => JSON.stringify(manualFormData.value))
+const shippingAddress = ref({
+  receiver_name: '',
+  receiver_phone: '',
+  province: '',
+  city: '',
+  district: '',
+  detail_address: '',
+  postal_code: '',
+})
+const orderRequiresShippingAddress = computed(() => cartItems.value.some((item) => item.requiresShippingAddress))
+const shippingAddressValidation = computed(() => {
+  if (!orderRequiresShippingAddress.value) {
+    return { valid: true, message: '' }
+  }
+  const requiredKeys = ['receiver_name', 'receiver_phone', 'province', 'city', 'district', 'detail_address'] as const
+  const missingKey = requiredKeys.find((key) => !String(shippingAddress.value[key] || '').trim())
+  if (missingKey) {
+    return { valid: false, message: t('checkout.errors.shippingAddressRequired') }
+  }
+  return { valid: true, message: '' }
+})
+const buildShippingAddressPayload = () => {
+  if (!orderRequiresShippingAddress.value) return undefined
+  return {
+    receiver_name: shippingAddress.value.receiver_name.trim(),
+    receiver_phone: shippingAddress.value.receiver_phone.trim(),
+    province: shippingAddress.value.province.trim(),
+    city: shippingAddress.value.city.trim(),
+    district: shippingAddress.value.district.trim(),
+    detail_address: shippingAddress.value.detail_address.trim(),
+    postal_code: shippingAddress.value.postal_code.trim(),
+  }
+}
+const shippingAddressFingerprint = computed(() => JSON.stringify(buildShippingAddressPayload() || null))
 
 const flowSteps = computed(() => {
   if (isBuyNowMode.value) {
@@ -891,6 +944,7 @@ const canSubmit = computed(() => {
   if (submitting.value) return false
   if (cartItems.value.length === 0) return false
   if (!manualFormValidation.value.valid) return false
+  if (!shippingAddressValidation.value.valid) return false
   if (cartItems.value.some((item) => itemStockExceeded(item))) return false
   if (walletOnlyPayment.value && expectedOnlinePayCents.value > 0) return false
   if (!walletOnlyPayment.value && requiresOnlineChannel.value && !selectedChannelId.value) return false
@@ -913,6 +967,9 @@ const submitBlockedReason = computed(() => {
   if (cartItems.value.length === 0) return t('checkout.errors.emptyCart')
   if (!manualFormValidation.value.valid) {
     return manualFormValidation.value.firstError || t('checkout.errors.manualFormInvalid')
+  }
+  if (!shippingAddressValidation.value.valid) {
+    return shippingAddressValidation.value.message
   }
   const stockBlockedItem = cartItems.value.find((item) => itemStockExceeded(item))
   if (stockBlockedItem) {
@@ -966,6 +1023,7 @@ const buildOrderPayload = () => ({
   affiliate_visitor_key: getAffiliateVisitorKey() || undefined,
   items: buildItemsPayload(),
   manual_form_data: buildManualFormDataPayload(),
+  shipping_address: buildShippingAddressPayload(),
 })
 
 const loadOrderPaymentChannels = async () => {
@@ -1033,6 +1091,13 @@ const loadPreview = async () => {
     return
   }
   if (!manualFormValidation.value.valid) {
+    preview.value = null
+    orderPaymentChannels.value = []
+    previewError.value = ''
+    couponRefreshing.value = false
+    return
+  }
+  if (!shippingAddressValidation.value.valid) {
     preview.value = null
     orderPaymentChannels.value = []
     previewError.value = ''
@@ -1169,7 +1234,7 @@ const handleSubmit = async () => {
 }
 
 watch(
-  () => [cartItems.value, manualFormFingerprint.value, normalizedCouponCode.value, checkoutMode.value, guestEmail.value, guestPassword.value, userAuthStore.isAuthenticated],
+  () => [cartItems.value, manualFormFingerprint.value, shippingAddressFingerprint.value, normalizedCouponCode.value, checkoutMode.value, guestEmail.value, guestPassword.value, userAuthStore.isAuthenticated],
   () => {
     debouncedLoadPreview()
   },

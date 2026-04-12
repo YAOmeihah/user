@@ -214,6 +214,16 @@
           <div v-else class="text-sm theme-text-muted">{{ t('orderDetail.noItems') }}</div>
         </div>
 
+        <div v-if="shippingAddressRows.length" class="theme-panel rounded-2xl p-6">
+          <h2 class="text-lg font-bold mb-4">{{ t('orderDetail.shippingTitle') }}</h2>
+          <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
+            <div v-for="row in shippingAddressRows" :key="row.key" class="theme-surface-soft border rounded-xl p-4">
+              <div class="text-xs theme-text-muted">{{ row.label }}</div>
+              <div class="mt-1 break-words theme-text-primary">{{ row.value }}</div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="order.children && order.children.length > 0"
           class="theme-panel rounded-2xl p-6">
           <h2 class="text-lg font-bold mb-4">{{ t('orderDetail.childOrdersTitle') }}</h2>
@@ -653,6 +663,22 @@ const manualSubmissionRows = (submission: any, schemaSnapshot?: any) => {
 
   return rows
 }
+
+const shippingAddressRows = computed(() => {
+  const address = order.value?.shipping_address
+  if (!address || typeof address !== 'object') return []
+  const region = [address.province, address.city, address.district]
+    .map((value: unknown) => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ')
+  return [
+    { key: 'receiver_name', label: t('orderDetail.shippingReceiverName'), value: String(address.receiver_name || '-') },
+    { key: 'receiver_phone', label: t('orderDetail.shippingReceiverPhone'), value: String(address.receiver_phone || '-') },
+    { key: 'region', label: t('orderDetail.shippingRegion'), value: region || '-' },
+    { key: 'detail_address', label: t('orderDetail.shippingDetailAddress'), value: String(address.detail_address || '-') },
+    { key: 'postal_code', label: t('orderDetail.shippingPostalCode'), value: String(address.postal_code || '-') },
+  ]
+})
 
 const orderItemSkuText = (item: any) => {
   return buildSkuDisplayTextFromSnapshot(item?.sku_snapshot, {

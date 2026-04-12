@@ -21,6 +21,7 @@ export interface CartItem {
     maxPurchaseQuantity?: number
     purchaseType?: string
     fulfillmentType?: string
+    requiresShippingAddress?: boolean
     manualFormSchema?: any
     paymentChannelIds?: number[]
 }
@@ -95,6 +96,7 @@ const loadCartItems = (): CartItem[] => {
                     skuStockEnforced: normalizeOptionalBoolean(row.skuStockEnforced ?? row.sku_stock_enforced),
                     skuStockSnapshotAt: normalizeOptionalString(row.skuStockSnapshotAt ?? row.sku_stock_snapshot_at),
                     maxPurchaseQuantity: normalizeOptionalLimitNumber(row.maxPurchaseQuantity ?? row.max_purchase_quantity),
+                    requiresShippingAddress: normalizeOptionalBoolean(row.requiresShippingAddress ?? row.requires_shipping_address),
                 } as CartItem
             })
             .filter(Boolean) as CartItem[]
@@ -126,6 +128,7 @@ export const useCartStore = defineStore('cart', () => {
             skuStockEnforced: normalizeOptionalBoolean(item.skuStockEnforced),
             skuStockSnapshotAt: normalizeOptionalString(item.skuStockSnapshotAt) || new Date().toISOString(),
             maxPurchaseQuantity: normalizeOptionalLimitNumber(item.maxPurchaseQuantity),
+            requiresShippingAddress: normalizeOptionalBoolean(item.requiresShippingAddress),
         }
         const qty = clampCartQuantity(quantity, normalizedItem.maxPurchaseQuantity)
         const identity = cartIdentity(normalizedItem)
@@ -150,6 +153,7 @@ export const useCartStore = defineStore('cart', () => {
             existing.skuUpstreamStock = normalizedItem.skuUpstreamStock
             existing.skuStockEnforced = normalizedItem.skuStockEnforced
             existing.skuStockSnapshotAt = normalizedItem.skuStockSnapshotAt
+            existing.requiresShippingAddress = normalizedItem.requiresShippingAddress
         } else {
             items.value.push({
                 ...normalizedItem,
@@ -183,6 +187,7 @@ export const useCartStore = defineStore('cart', () => {
         target.skuStockEnforced = normalizeOptionalBoolean(target.skuStockEnforced)
         target.skuStockSnapshotAt = normalizeOptionalString(target.skuStockSnapshotAt)
         target.maxPurchaseQuantity = normalizeOptionalLimitNumber(target.maxPurchaseQuantity)
+        target.requiresShippingAddress = normalizeOptionalBoolean(target.requiresShippingAddress)
         persist()
     }
 
