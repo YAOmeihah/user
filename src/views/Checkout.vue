@@ -139,25 +139,33 @@
               <p class="mt-1 text-sm theme-text-muted">{{ t('checkout.shippingTip') }}</p>
             </div>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <input v-model="shippingAddress.receiver_name" type="text" class="w-full form-input-lg" :placeholder="t('checkout.shippingReceiverName')" />
-              <input v-model="shippingAddress.receiver_phone" type="text" class="w-full form-input-lg" :placeholder="t('checkout.shippingReceiverPhone')" />
-              <select v-model="shippingAddress.province_code" class="w-full form-input-lg" :disabled="addressLoading.provinces">
-                <option value="">{{ addressLoading.provinces ? t('common.loading') : t('checkout.shippingProvince') }}</option>
-                <option v-for="option in provinceOptions" :key="option.code" :value="option.code">{{ option.name }}</option>
-              </select>
-              <select v-model="shippingAddress.city_code" class="w-full form-input-lg" :disabled="addressLoading.cities || !shippingAddress.province_code || isMunicipalityCityLocked">
-                <option value="">{{ addressLoading.cities ? t('common.loading') : t('checkout.shippingCity') }}</option>
-                <option v-for="option in cityOptions" :key="option.code" :value="option.code">{{ option.name }}</option>
-              </select>
-              <select v-model="shippingAddress.district_code" class="w-full form-input-lg" :disabled="addressLoading.districts || !shippingAddress.city_code">
-                <option value="">{{ addressLoading.districts ? t('common.loading') : t('checkout.shippingDistrict') }}</option>
-                <option v-for="option in districtOptions" :key="option.code" :value="option.code">{{ option.name }}</option>
-              </select>
-              <select v-model="shippingAddress.township_code" class="w-full form-input-lg" :disabled="addressLoading.townships || !shippingAddress.district_code">
-                <option value="">{{ addressLoading.townships ? t('common.loading') : t('checkout.shippingTownship') }}</option>
-                <option v-for="option in townshipOptions" :key="option.code" :value="option.code">{{ option.name }}</option>
-              </select>
-              <input v-model="shippingAddress.detail_address" type="text" class="w-full form-input-lg md:col-span-2" :placeholder="t('checkout.shippingDetailAddress')" />
+              <input
+                v-model="shippingAddress.receiver_name"
+                type="text"
+                autocomplete="name"
+                class="w-full form-input-lg"
+                :placeholder="t('checkout.shippingReceiverName')"
+              />
+              <input
+                v-model="shippingAddress.receiver_phone"
+                type="tel"
+                autocomplete="tel"
+                class="w-full form-input-lg"
+                :placeholder="t('checkout.shippingReceiverPhone')"
+              />
+              <div class="md:col-span-2">
+                <RegionSelector
+                  v-model="shippingAddress"
+                  :invalid="submitAttempted && shippingRegionMissing"
+                />
+              </div>
+              <textarea
+                v-model="shippingAddress.detail_address"
+                rows="3"
+                autocomplete="street-address"
+                class="w-full form-input-lg md:col-span-2"
+                :placeholder="t('checkout.shippingDetailAddress')"
+              />
             </div>
             <p v-if="submitAttempted && !shippingAddressValidation.valid" class="mt-3 text-sm text-red-500">
               {{ shippingAddressValidation.message }}
@@ -369,7 +377,7 @@ import { useCartStore, type CartItem } from '../stores/cart'
 import { useBuyNowStore } from '../stores/buyNow'
 import { useAppStore } from '../stores/app'
 import { useUserAuthStore } from '../stores/userAuth'
-import { addressAPI, guestOrderAPI, userOrderAPI, walletAPI, type CaptchaPayload } from '../api'
+import { guestOrderAPI, userOrderAPI, walletAPI, type CaptchaPayload } from '../api'
 import { debounceAsync } from '../utils/debounce'
 import { pageAlertClass, type PageAlert } from '../utils/alerts'
 import { amountToCents, basisPointsToPercent, centsToAmount, parseInteger, rateToBasisPoints } from '../utils/money'
@@ -380,8 +388,9 @@ import { getAffiliateCode, getAffiliateVisitorKey } from '../utils/affiliate'
 import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
 import CheckoutManualForm from '../components/checkout/CheckoutManualForm.vue'
+import RegionSelector from '../components/checkout/RegionSelector.vue'
 import { useLocalized } from '../composables/useProduct'
-import type { AddressDivisionOption, ShippingAddressFormValue } from '../types/address'
+import type { ShippingAddressFormValue } from '../types/address'
 
 const router = useRouter()
 const route = useRoute()
@@ -880,20 +889,12 @@ const shippingAddress = ref<ShippingAddressFormValue>({
   township_code: '',
   detail_address: '',
 })
-const municipalityProvinceCodes = new Set(['11', '12', '31', '50'])
-const provinceOptions = ref<AddressDivisionOption[]>([])
-const cityOptions = ref<AddressDivisionOption[]>([])
-const districtOptions = ref<AddressDivisionOption[]>([])
-const townshipOptions = ref<AddressDivisionOption[]>([])
-const addressLoading = ref({
-  provinces: false,
-  cities: false,
-  districts: false,
-  townships: false,
-})
 const orderRequiresShippingAddress = computed(() => cartItems.value.some((item) => item.requiresShippingAddress))
-const selectedProvinceIsMunicipality = computed(() => municipalityProvinceCodes.has(shippingAddress.value.province_code))
-const isMunicipalityCityLocked = computed(() => selectedProvinceIsMunicipality.value && cityOptions.value.length === 1)
+const shippingRegionMissing = computed(() => {
+  if (!orderRequiresShippingAddress.value) return false
+  const requiredKeys = ['province_code', 'city_code', 'district_code', 'township_code'] as const
+  return requiredKeys.some((key) => !String(shippingAddress.value[key] || '').trim())
+})
 const shippingAddressValidation = computed(() => {
   if (!orderRequiresShippingAddress.value) {
     return { valid: true, message: '' }
@@ -922,78 +923,6 @@ const buildShippingAddressPayload = () => {
   }
 }
 const shippingAddressFingerprint = computed(() => JSON.stringify(buildShippingAddressPayload() || null))
-
-const syncShippingDivisionName = (
-  code: string,
-  options: AddressDivisionOption[],
-  field: 'province' | 'city' | 'district' | 'township',
-) => {
-  const selected = options.find((item) => item.code === code)
-  shippingAddress.value[field] = selected?.name || ''
-}
-
-const clearShippingFromLevel = (level: 'city' | 'district' | 'township') => {
-  if (level === 'city') {
-    shippingAddress.value.city = ''
-    shippingAddress.value.city_code = ''
-    cityOptions.value = []
-  }
-  if (level === 'city' || level === 'district') {
-    shippingAddress.value.district = ''
-    shippingAddress.value.district_code = ''
-    districtOptions.value = []
-  }
-  if (level === 'city' || level === 'district' || level === 'township') {
-    shippingAddress.value.township = ''
-    shippingAddress.value.township_code = ''
-    townshipOptions.value = []
-  }
-}
-
-const fetchAddressOptions = async (
-  key: 'provinces' | 'cities' | 'districts' | 'townships',
-  request: () => Promise<{ data: { data?: AddressDivisionOption[] } }>,
-  target: typeof provinceOptions,
-) => {
-  addressLoading.value[key] = true
-  try {
-    const response = await request()
-    target.value = Array.isArray(response.data.data) ? response.data.data : []
-  } catch {
-    target.value = []
-  } finally {
-    addressLoading.value[key] = false
-  }
-}
-
-const loadProvinceOptions = async () => {
-  if (provinceOptions.value.length > 0) return
-  await fetchAddressOptions('provinces', () => addressAPI.provinces(), provinceOptions)
-}
-
-const loadCityOptions = async (provinceCode: string) => {
-  if (!provinceCode) {
-    cityOptions.value = []
-    return
-  }
-  await fetchAddressOptions('cities', () => addressAPI.cities(provinceCode), cityOptions)
-}
-
-const loadDistrictOptions = async (cityCode: string) => {
-  if (!cityCode) {
-    districtOptions.value = []
-    return
-  }
-  await fetchAddressOptions('districts', () => addressAPI.districts(cityCode), districtOptions)
-}
-
-const loadTownshipOptions = async (districtCode: string) => {
-  if (!districtCode) {
-    townshipOptions.value = []
-    return
-  }
-  await fetchAddressOptions('townships', () => addressAPI.townships(districtCode), townshipOptions)
-}
 
 const flowSteps = computed(() => {
   if (isBuyNowMode.value) {
@@ -1338,59 +1267,6 @@ const handleSubmit = async () => {
     submitting.value = false
   }
 }
-
-watch(
-  () => orderRequiresShippingAddress.value,
-  (required) => {
-    if (!required) {
-      return
-    }
-    loadProvinceOptions()
-  },
-  { immediate: true }
-)
-
-watch(
-  () => shippingAddress.value.province_code,
-  async (value, previous) => {
-    syncShippingDivisionName(value, provinceOptions.value, 'province')
-    if (value === previous) return
-    clearShippingFromLevel('city')
-    await loadCityOptions(value)
-    const autoCity = municipalityProvinceCodes.has(value) ? cityOptions.value[0] : undefined
-    if (autoCity) {
-      shippingAddress.value.city_code = autoCity.code
-      return
-    }
-  }
-)
-
-watch(
-  () => shippingAddress.value.city_code,
-  async (value, previous) => {
-    syncShippingDivisionName(value, cityOptions.value, 'city')
-    if (value === previous) return
-    clearShippingFromLevel('district')
-    await loadDistrictOptions(value)
-  }
-)
-
-watch(
-  () => shippingAddress.value.district_code,
-  async (value, previous) => {
-    syncShippingDivisionName(value, districtOptions.value, 'district')
-    if (value === previous) return
-    clearShippingFromLevel('township')
-    await loadTownshipOptions(value)
-  }
-)
-
-watch(
-  () => shippingAddress.value.township_code,
-  (value) => {
-    syncShippingDivisionName(value, townshipOptions.value, 'township')
-  }
-)
 
 watch(
   () => [cartItems.value, manualFormFingerprint.value, shippingAddressFingerprint.value, normalizedCouponCode.value, checkoutMode.value, guestEmail.value, guestPassword.value, userAuthStore.isAuthenticated],
