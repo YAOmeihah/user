@@ -670,7 +670,7 @@ const manualSubmissionRows = (submission: any, schemaSnapshot?: any) => {
 const shippingAddressRows = computed(() => {
   const address = order.value?.shipping_address
   if (!address || typeof address !== 'object') return []
-  const region = [address.province, address.city, address.district]
+  const region = [address.province, address.city, address.district, address.township, address.village]
     .map((value: unknown) => String(value || '').trim())
     .filter(Boolean)
     .join(' ')
@@ -679,7 +679,6 @@ const shippingAddressRows = computed(() => {
     { key: 'receiver_phone', label: t('orderDetail.shippingReceiverPhone'), value: String(address.receiver_phone || '-') },
     { key: 'region', label: t('orderDetail.shippingRegion'), value: region || '-' },
     { key: 'detail_address', label: t('orderDetail.shippingDetailAddress'), value: String(address.detail_address || '-') },
-    { key: 'postal_code', label: t('orderDetail.shippingPostalCode'), value: String(address.postal_code || '-') },
   ]
 })
 

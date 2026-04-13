@@ -37,6 +37,7 @@ export { userOrderAPI, guestOrderAPI, paymentAPI } from './order'
 export { walletAPI, giftCardAPI } from './wallet'
 export { affiliateAPI } from './affiliate'
 export { apiCredentialAPI } from './credential'
+export { addressAPI } from './address'
 
 // Default export for backward compatibility
 export { default } from './client'
