@@ -18,7 +18,5 @@ export interface ShippingAddressFormValue {
   district_code: string
   township: string
   township_code: string
-  village: string
-  village_code: string
   detail_address: string
 }

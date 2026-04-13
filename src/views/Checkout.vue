@@ -145,7 +145,7 @@
                 <option value="">{{ addressLoading.provinces ? t('common.loading') : t('checkout.shippingProvince') }}</option>
                 <option v-for="option in provinceOptions" :key="option.code" :value="option.code">{{ option.name }}</option>
               </select>
-              <select v-model="shippingAddress.city_code" class="w-full form-input-lg" :disabled="addressLoading.cities || !shippingAddress.province_code">
+              <select v-model="shippingAddress.city_code" class="w-full form-input-lg" :disabled="addressLoading.cities || !shippingAddress.province_code || isMunicipalityCityLocked">
                 <option value="">{{ addressLoading.cities ? t('common.loading') : t('checkout.shippingCity') }}</option>
                 <option v-for="option in cityOptions" :key="option.code" :value="option.code">{{ option.name }}</option>
               </select>
@@ -156,10 +156,6 @@
               <select v-model="shippingAddress.township_code" class="w-full form-input-lg" :disabled="addressLoading.townships || !shippingAddress.district_code">
                 <option value="">{{ addressLoading.townships ? t('common.loading') : t('checkout.shippingTownship') }}</option>
                 <option v-for="option in townshipOptions" :key="option.code" :value="option.code">{{ option.name }}</option>
-              </select>
-              <select v-model="shippingAddress.village_code" class="w-full form-input-lg md:col-span-2" :disabled="addressLoading.villages || !shippingAddress.township_code">
-                <option value="">{{ addressLoading.villages ? t('common.loading') : t('checkout.shippingVillage') }}</option>
-                <option v-for="option in villageOptions" :key="option.code" :value="option.code">{{ option.name }}</option>
               </select>
               <input v-model="shippingAddress.detail_address" type="text" class="w-full form-input-lg md:col-span-2" :placeholder="t('checkout.shippingDetailAddress')" />
             </div>
@@ -882,28 +878,27 @@ const shippingAddress = ref<ShippingAddressFormValue>({
   district_code: '',
   township: '',
   township_code: '',
-  village: '',
-  village_code: '',
   detail_address: '',
 })
+const municipalityProvinceCodes = new Set(['11', '12', '31', '50'])
 const provinceOptions = ref<AddressDivisionOption[]>([])
 const cityOptions = ref<AddressDivisionOption[]>([])
 const districtOptions = ref<AddressDivisionOption[]>([])
 const townshipOptions = ref<AddressDivisionOption[]>([])
-const villageOptions = ref<AddressDivisionOption[]>([])
 const addressLoading = ref({
   provinces: false,
   cities: false,
   districts: false,
   townships: false,
-  villages: false,
 })
 const orderRequiresShippingAddress = computed(() => cartItems.value.some((item) => item.requiresShippingAddress))
+const selectedProvinceIsMunicipality = computed(() => municipalityProvinceCodes.has(shippingAddress.value.province_code))
+const isMunicipalityCityLocked = computed(() => selectedProvinceIsMunicipality.value && cityOptions.value.length === 1)
 const shippingAddressValidation = computed(() => {
   if (!orderRequiresShippingAddress.value) {
     return { valid: true, message: '' }
   }
-  const requiredKeys = ['receiver_name', 'receiver_phone', 'province_code', 'city_code', 'district_code', 'township_code', 'village_code', 'detail_address'] as const
+  const requiredKeys = ['receiver_name', 'receiver_phone', 'province_code', 'city_code', 'district_code', 'township_code', 'detail_address'] as const
   const missingKey = requiredKeys.find((key) => !String(shippingAddress.value[key] || '').trim())
   if (missingKey) {
     return { valid: false, message: t('checkout.errors.shippingAddressRequired') }
@@ -923,8 +918,6 @@ const buildShippingAddressPayload = () => {
     district_code: shippingAddress.value.district_code.trim(),
     township: shippingAddress.value.township.trim(),
     township_code: shippingAddress.value.township_code.trim(),
-    village: shippingAddress.value.village.trim(),
-    village_code: shippingAddress.value.village_code.trim(),
     detail_address: shippingAddress.value.detail_address.trim(),
   }
 }
@@ -933,13 +926,13 @@ const shippingAddressFingerprint = computed(() => JSON.stringify(buildShippingAd
 const syncShippingDivisionName = (
   code: string,
   options: AddressDivisionOption[],
-  field: 'province' | 'city' | 'district' | 'township' | 'village',
+  field: 'province' | 'city' | 'district' | 'township',
 ) => {
   const selected = options.find((item) => item.code === code)
   shippingAddress.value[field] = selected?.name || ''
 }
 
-const clearShippingFromLevel = (level: 'city' | 'district' | 'township' | 'village') => {
+const clearShippingFromLevel = (level: 'city' | 'district' | 'township') => {
   if (level === 'city') {
     shippingAddress.value.city = ''
     shippingAddress.value.city_code = ''
@@ -955,13 +948,10 @@ const clearShippingFromLevel = (level: 'city' | 'district' | 'township' | 'villa
     shippingAddress.value.township_code = ''
     townshipOptions.value = []
   }
-  shippingAddress.value.village = ''
-  shippingAddress.value.village_code = ''
-  villageOptions.value = []
 }
 
 const fetchAddressOptions = async (
-  key: 'provinces' | 'cities' | 'districts' | 'townships' | 'villages',
+  key: 'provinces' | 'cities' | 'districts' | 'townships',
   request: () => Promise<{ data: { data?: AddressDivisionOption[] } }>,
   target: typeof provinceOptions,
 ) => {
@@ -1003,14 +993,6 @@ const loadTownshipOptions = async (districtCode: string) => {
     return
   }
   await fetchAddressOptions('townships', () => addressAPI.townships(districtCode), townshipOptions)
-}
-
-const loadVillageOptions = async (townshipCode: string) => {
-  if (!townshipCode) {
-    villageOptions.value = []
-    return
-  }
-  await fetchAddressOptions('villages', () => addressAPI.villages(townshipCode), villageOptions)
 }
 
 const flowSteps = computed(() => {
@@ -1375,6 +1357,11 @@ watch(
     if (value === previous) return
     clearShippingFromLevel('city')
     await loadCityOptions(value)
+    const autoCity = municipalityProvinceCodes.has(value) ? cityOptions.value[0] : undefined
+    if (autoCity) {
+      shippingAddress.value.city_code = autoCity.code
+      return
+    }
   }
 )
 
@@ -1400,18 +1387,8 @@ watch(
 
 watch(
   () => shippingAddress.value.township_code,
-  async (value, previous) => {
-    syncShippingDivisionName(value, townshipOptions.value, 'township')
-    if (value === previous) return
-    clearShippingFromLevel('village')
-    await loadVillageOptions(value)
-  }
-)
-
-watch(
-  () => shippingAddress.value.village_code,
   (value) => {
-    syncShippingDivisionName(value, villageOptions.value, 'village')
+    syncShippingDivisionName(value, townshipOptions.value, 'township')
   }
 )
 

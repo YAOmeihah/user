@@ -5,5 +5,4 @@ export const addressAPI = {
   cities: (provinceCode: string) => api.get('/address/cities', { params: { province_code: provinceCode } }),
   districts: (cityCode: string) => api.get('/address/districts', { params: { city_code: cityCode } }),
   townships: (districtCode: string) => api.get('/address/townships', { params: { district_code: districtCode } }),
-  villages: (townshipCode: string) => api.get('/address/villages', { params: { township_code: townshipCode } }),
 }
