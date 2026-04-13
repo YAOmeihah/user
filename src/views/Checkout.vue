@@ -207,16 +207,22 @@
 
             <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <input
-                v-model="guestEmail"
-                type="email"
+                v-model="guestPhone"
+                type="tel"
                 class="w-full form-input-lg"
-                :placeholder="t('checkout.guestEmailPlaceholder')"
+                :placeholder="t('checkout.guestPhonePlaceholder')"
               />
               <input
                 v-model="guestPassword"
                 type="password"
                 class="w-full form-input-lg"
                 :placeholder="t('checkout.guestPasswordPlaceholder')"
+              />
+              <input
+                v-model="guestEmail"
+                type="email"
+                class="w-full form-input-lg md:col-span-2"
+                :placeholder="t('checkout.guestEmailPlaceholder')"
               />
             </div>
 
@@ -244,6 +250,12 @@
                 <li>{{ t('checkout.guestInstructions.password') }}</li>
               </ul>
             </div>
+            <p v-if="checkoutMode === 'guest'" class="text-xs theme-text-muted">
+              {{ t('checkout.guestTip') }}
+            </p>
+            <p v-if="checkoutMode === 'guest' && guestPhone && !guestPhoneValid" class="text-xs text-red-500">
+              {{ t('error.phone_invalid') }}
+            </p>
             <p v-if="checkoutMode === 'guest' && guestEmail && !guestEmailValid" class="text-xs text-red-500">
               {{ t('error.email_invalid') }}
             </p>
@@ -584,6 +596,7 @@ const previewMemberDiscount = computed(() => preview.value?.member_discount_amou
 const previewTotal = computed(() => preview.value?.total_amount ?? totalAmount.value)
 
 const checkoutMode = ref<'guest' | 'member'>('guest')
+const guestPhone = ref('')
 const guestEmail = ref('')
 const guestPassword = ref('')
 const guestCaptchaPayload = ref<CaptchaPayload>({})
@@ -939,9 +952,16 @@ const flowSteps = computed(() => {
 })
 
 const isGuestCheckout = computed(() => !userAuthStore.isAuthenticated && checkoutMode.value === 'guest')
+const guestPhoneValid = computed(() => {
+  if (!isGuestCheckout.value) return true
+  return phonePattern.test(guestPhone.value.trim())
+})
+
 const guestEmailValid = computed(() => {
   if (!isGuestCheckout.value) return true
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.value.trim())
+  const value = guestEmail.value.trim()
+  if (!value) return true
+  return emailPattern.test(value)
 })
 
 const captchaConfig = computed(() => appStore.config?.captcha || null)
@@ -986,7 +1006,7 @@ const canSubmit = computed(() => {
   if (requiresOnlineChannel.value && selectedChannelAmountHint.value) return false
   if (userAuthStore.isAuthenticated) return true
   if (checkoutMode.value !== 'guest') return false
-  if (!guestEmail.value.trim() || !guestPassword.value.trim() || !guestEmailValid.value) return false
+  if (!guestPhone.value.trim() || !guestPassword.value.trim() || !guestPhoneValid.value || !guestEmailValid.value) return false
   if (!guestCaptchaEnabled.value) return true
   if (captchaProvider.value === 'image') {
     return Boolean(guestCaptchaPayload.value.captcha_id && guestCaptchaPayload.value.captcha_code)
@@ -1015,7 +1035,8 @@ const submitBlockedReason = computed(() => {
   if (requiresOnlineChannel.value && selectedChannelAmountHint.value) return selectedChannelAmountHint.value
   if (userAuthStore.isAuthenticated) return ''
   if (checkoutMode.value !== 'guest') return t('checkout.errors.loginOrGuest')
-  if (!guestEmail.value.trim() || !guestPassword.value.trim()) return t('checkout.errors.missingGuest')
+  if (!guestPhone.value.trim() || !guestPassword.value.trim()) return t('checkout.errors.missingGuest')
+  if (!guestPhoneValid.value) return t('error.phone_invalid')
   if (!guestEmailValid.value) return t('error.email_invalid')
   if (guestCaptchaEnabled.value) {
     if (captchaProvider.value === 'image' && (!guestCaptchaPayload.value.captcha_id || !guestCaptchaPayload.value.captcha_code)) {
@@ -1118,7 +1139,7 @@ const loadPreview = async () => {
     couponRefreshing.value = false
     return
   }
-  if (isGuestCheckout.value && (!guestEmail.value.trim() || !guestPassword.value.trim() || !guestEmailValid.value)) {
+  if (isGuestCheckout.value && (!guestPhone.value.trim() || !guestPassword.value.trim() || !guestPhoneValid.value || !guestEmailValid.value)) {
     preview.value = null
     orderPaymentChannels.value = []
     previewError.value = ''
@@ -1160,6 +1181,7 @@ const loadPreview = async () => {
     } else {
       response = await guestOrderAPI.preview({
         ...payload,
+        phone: guestPhone.value.trim(),
         email: guestEmail.value.trim(),
         order_password: guestPassword.value,
       })
@@ -1232,11 +1254,13 @@ const handleSubmit = async () => {
     } else {
       const response = await guestOrderAPI.createAndPay({
         ...payload,
+        phone: guestPhone.value.trim(),
         email: guestEmail.value.trim(),
         order_password: guestPassword.value,
         captcha_payload: getGuestCaptchaPayload(),
       })
       localStorage.setItem('guest_order_auth', JSON.stringify({
+        phone: guestPhone.value.trim(),
         email: guestEmail.value.trim(),
         order_password: guestPassword.value,
       }))
@@ -1269,7 +1293,7 @@ const handleSubmit = async () => {
 }
 
 watch(
-  () => [cartItems.value, manualFormFingerprint.value, shippingAddressFingerprint.value, normalizedCouponCode.value, checkoutMode.value, guestEmail.value, guestPassword.value, userAuthStore.isAuthenticated],
+  () => [cartItems.value, manualFormFingerprint.value, shippingAddressFingerprint.value, normalizedCouponCode.value, checkoutMode.value, guestPhone.value, guestEmail.value, guestPassword.value, userAuthStore.isAuthenticated],
   () => {
     debouncedLoadPreview()
   },

@@ -14,16 +14,16 @@
       <div class="theme-panel rounded-2xl p-6 mb-8">
         <div v-if="hasSavedAuth"
           class="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs theme-text-muted theme-surface-soft border rounded-xl px-4 py-3">
-          <span>{{ t('guestOrders.savedHint', { email: savedAuth.email || '-' }) }}</span>
+          <span>{{ t('guestOrders.savedHint', { phone: savedAuth.phone || '-' }) }}</span>
           <button type="button" @click="clearSaved"
             class="theme-link-muted text-xs underline decoration-gray-300 dark:decoration-white/20">
             {{ t('guestOrders.clearSaved') }}
           </button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input v-model="email" type="email"
+          <input v-model="phone" type="tel"
             class="form-input-lg"
-            :placeholder="t('guestOrders.emailPlaceholder')" />
+            :placeholder="t('guestOrders.phonePlaceholder')" />
           <input v-model="orderPassword" type="password"
             class="form-input-lg"
             :placeholder="t('guestOrders.passwordPlaceholder')" />
@@ -125,8 +125,8 @@ import { orderStatusClass, orderStatusLabel } from '../utils/status'
 import { debounceAsync } from '../utils/debounce'
 import { amountToCents } from '../utils/money'
 
-const savedAuth = ref<{ email: string; order_password: string }>({ email: '', order_password: '' })
-const email = ref('')
+const savedAuth = ref<{ phone: string; order_password: string }>({ phone: '', order_password: '' })
+const phone = ref('')
 const orderPassword = ref('')
 const orderNo = ref('')
 const loading = ref(false)
@@ -144,18 +144,18 @@ const loadSavedAuth = () => {
   const saved = localStorage.getItem('guest_order_auth')
   const parsed = saved ? JSON.parse(saved) : {}
   savedAuth.value = {
-    email: parsed.email || '',
+    phone: parsed.phone || '',
     order_password: parsed.order_password || '',
   }
-  email.value = savedAuth.value.email
+  phone.value = savedAuth.value.phone
   orderPassword.value = savedAuth.value.order_password
 }
 
-const hasSavedAuth = computed(() => Boolean(savedAuth.value.email || savedAuth.value.order_password))
+const hasSavedAuth = computed(() => Boolean(savedAuth.value.phone || savedAuth.value.order_password))
 
 const persistAuth = () => {
   const payload = {
-    email: email.value,
+    phone: phone.value,
     order_password: orderPassword.value,
   }
   localStorage.setItem('guest_order_auth', JSON.stringify(payload))
@@ -164,8 +164,8 @@ const persistAuth = () => {
 
 const clearSaved = () => {
   localStorage.removeItem('guest_order_auth')
-  savedAuth.value = { email: '', order_password: '' }
-  email.value = ''
+  savedAuth.value = { phone: '', order_password: '' }
+  phone.value = ''
   orderPassword.value = ''
   orderNo.value = ''
   orders.value = []
@@ -180,8 +180,8 @@ const clearSaved = () => {
 
 const handleSearch = async () => {
   error.value = ''
-  if (!email.value || !orderPassword.value) {
-    error.value = t('guestOrders.errors.missing')
+  if (!phone.value || !orderPassword.value) {
+      error.value = t('guestOrders.errors.missing')
     return
   }
   persistAuth()
@@ -191,8 +191,8 @@ const handleSearch = async () => {
 const loadOrders = async (page: number) => {
   loading.value = true
   try {
-    const response = await guestOrderAPI.list({
-      email: email.value,
+      const response = await guestOrderAPI.list({
+      phone: phone.value,
       order_password: orderPassword.value,
       order_no: orderNo.value || undefined,
       page,

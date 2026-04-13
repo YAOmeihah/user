@@ -16,9 +16,9 @@
         <h2 class="text-lg font-bold mb-2">{{ t('guestOrderDetail.authTitle') }}</h2>
         <p class="text-xs theme-text-muted mb-4">{{ t('guestOrderDetail.authHint') }}</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input v-model="auth.email" type="email"
+          <input v-model="auth.phone" type="tel"
             class="form-input-lg"
-            :placeholder="t('guestOrders.emailPlaceholder')" />
+            :placeholder="t('guestOrders.phonePlaceholder')" />
           <input v-model="auth.order_password" type="password"
             class="form-input-lg"
             :placeholder="t('guestOrders.passwordPlaceholder')" />
@@ -430,7 +430,7 @@ const loading = ref(true)
 const order = ref<any>(null)
 const authError = ref('')
 const auth = ref({
-  email: '',
+  phone: '',
   order_password: '',
 })
 const fulfillmentCopied = ref(false)
@@ -446,7 +446,7 @@ const handleDownloadFulfillment = async (orderNo: string) => {
   fulfillmentDownloading.value = true
   try {
     const res = await guestOrderAPI.downloadFulfillment(orderNo, {
-      email: auth.value.email,
+      phone: auth.value.phone,
       order_password: auth.value.order_password,
     })
     const blob = new Blob([res.data], { type: 'text/plain; charset=utf-8' })
@@ -493,12 +493,12 @@ const loadSavedAuth = () => {
   const saved = localStorage.getItem('guest_order_auth')
   const savedAuth = saved ? JSON.parse(saved) : {}
   auth.value = {
-    email: savedAuth.email || '',
+    phone: savedAuth.phone || '',
     order_password: savedAuth.order_password || '',
   }
 }
 
-const hasAuth = computed(() => Boolean(auth.value.email && auth.value.order_password))
+const hasAuth = computed(() => Boolean(auth.value.phone && auth.value.order_password))
 const showAuthForm = computed(() => !hasAuth.value || authError.value !== '')
 
 const loadOrder = async () => {
@@ -510,7 +510,7 @@ const loadOrder = async () => {
       return
     }
     const response = await guestOrderAPI.detail(String(route.params.order_no || '').trim(), {
-      email: auth.value.email,
+      phone: auth.value.phone,
       order_password: auth.value.order_password,
     })
     order.value = response.data.data
@@ -724,7 +724,7 @@ onMounted(() => {
 
 const persistAuth = () => {
   localStorage.setItem('guest_order_auth', JSON.stringify({
-    email: auth.value.email,
+    phone: auth.value.phone,
     order_password: auth.value.order_password,
   }))
 }
@@ -741,7 +741,7 @@ const handleAuthSubmit = async () => {
 
 const clearAuth = () => {
   localStorage.removeItem('guest_order_auth')
-  auth.value = { email: '', order_password: '' }
+  auth.value = { phone: '', order_password: '' }
   order.value = null
   authError.value = t('guestOrderDetail.authRequired')
 }

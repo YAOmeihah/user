@@ -35,9 +35,9 @@
         <h2 class="text-lg font-bold mb-2">{{ t('payment.guestAuthTitle') }}</h2>
         <p class="text-xs theme-text-muted mb-4">{{ t('payment.guestAuthHint') }}</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input v-model="guestAuth.email" type="email"
+          <input v-model="guestAuth.phone" type="tel"
             class="form-input-lg"
-            :placeholder="t('guestOrders.emailPlaceholder')" />
+            :placeholder="t('guestOrders.phonePlaceholder')" />
           <input v-model="guestAuth.order_password" type="password"
             class="form-input-lg"
             :placeholder="t('guestOrders.passwordPlaceholder')" />
@@ -491,7 +491,7 @@ const openedPayWindow = ref(false)
 const latestLoaded = ref(false)
 const cachedPayment = ref<any>(null)
 const guestAuth = ref({
-  email: '',
+  phone: '',
   order_password: '',
 })
 const guestAuthError = ref('')
@@ -563,7 +563,7 @@ const orderNoResolved = computed(() => {
   return order.value?.order_no || orderNoQuery.value || ''
 })
 const backLink = computed(() => (isGuest.value ? '/guest/orders' : '/me/orders'))
-const hasGuestAuth = computed(() => Boolean(guestAuth.value.email && guestAuth.value.order_password))
+const hasGuestAuth = computed(() => Boolean(guestAuth.value.phone && guestAuth.value.order_password))
 const showGuestAuthForm = computed(() => isGuest.value && (!hasGuestAuth.value || guestAuthError.value))
 const walletOnlyPayment = computed(() => !!appStore.config?.wallet_only_payment)
 const showBalanceOption = computed(() => !isGuest.value)
@@ -1000,7 +1000,7 @@ const loadOrder = async (options?: { silent?: boolean }) => {
         return
       }
       const response = await guestOrderAPI.detail(orderNoQuery.value, {
-        email: guestAuth.value.email,
+        phone: guestAuth.value.phone,
         order_password: guestAuth.value.order_password,
       }, { silentBusinessError: true })
       order.value = response.data.data
@@ -1119,7 +1119,7 @@ const loadLatestPayment = async () => {
     if (isGuest.value) {
       response = await guestOrderAPI.latestPayment({
         order_no: orderNoResolved.value,
-        email: guestAuth.value.email,
+        phone: guestAuth.value.phone,
         order_password: guestAuth.value.order_password,
       })
     } else {
@@ -1206,7 +1206,7 @@ const capturePaypalIfNeeded = async () => {
         return
       }
       await guestOrderAPI.capturePayment(Number(paymentResult.value.payment_id), {
-        email: guestAuth.value.email,
+        phone: guestAuth.value.phone,
         order_password: guestAuth.value.order_password,
       })
     } else {
@@ -1244,7 +1244,7 @@ const captureStripeIfNeeded = async () => {
         return
       }
       await guestOrderAPI.capturePayment(Number(paymentResult.value.payment_id), {
-        email: guestAuth.value.email,
+        phone: guestAuth.value.phone,
         order_password: guestAuth.value.order_password,
       })
     } else {
@@ -1318,7 +1318,7 @@ const performPayment = async () => {
         return
       }
       const response = await guestOrderAPI.createPayment({
-        email: guestAuth.value.email,
+        phone: guestAuth.value.phone,
         order_password: guestAuth.value.order_password,
         order_no: orderNoResolved.value,
         channel_id: selectedChannelId.value,
@@ -1526,7 +1526,7 @@ onMounted(() => {
   const saved = localStorage.getItem('guest_order_auth')
   const savedAuth = saved ? JSON.parse(saved) : {}
   guestAuth.value = {
-    email: savedAuth.email || '',
+    phone: savedAuth.phone || '',
     order_password: savedAuth.order_password || '',
   }
   loadOrder()
@@ -1625,7 +1625,7 @@ const handleGuestAuthSubmit = async () => {
     return
   }
   localStorage.setItem('guest_order_auth', JSON.stringify({
-    email: guestAuth.value.email,
+    phone: guestAuth.value.phone,
     order_password: guestAuth.value.order_password,
   }))
   await debouncedLoadOrder()
