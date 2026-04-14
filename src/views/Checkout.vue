@@ -207,10 +207,11 @@
 
             <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <input
-                v-model="guestPhone"
+                :value="guestPhone"
                 type="tel"
                 class="w-full form-input-lg"
                 :placeholder="t('checkout.guestPhonePlaceholder')"
+                @input="handleGuestPhoneInput"
               />
               <input
                 v-model="guestPassword"
@@ -224,6 +225,12 @@
                 class="w-full form-input-lg md:col-span-2"
                 :placeholder="t('checkout.guestEmailPlaceholder')"
               />
+              <p
+                v-if="orderRequiresShippingAddress"
+                class="text-xs theme-text-muted md:col-span-2"
+              >
+                {{ t('checkout.guestPhoneSyncHint') }}
+              </p>
             </div>
 
             <div v-if="checkoutMode === 'guest' && guestCaptchaEnabled" class="space-y-2">
@@ -597,6 +604,7 @@ const previewTotal = computed(() => preview.value?.total_amount ?? totalAmount.v
 
 const checkoutMode = ref<'guest' | 'member'>('guest')
 const guestPhone = ref('')
+const guestPhoneAutoManaged = ref(true)
 const guestEmail = ref('')
 const guestPassword = ref('')
 const guestCaptchaPayload = ref<CaptchaPayload>({})
@@ -952,10 +960,21 @@ const flowSteps = computed(() => {
 })
 
 const isGuestCheckout = computed(() => !userAuthStore.isAuthenticated && checkoutMode.value === 'guest')
+const shouldSyncGuestPhoneFromShipping = computed(() => {
+  return isGuestCheckout.value && orderRequiresShippingAddress.value && guestPhoneAutoManaged.value
+})
 const guestPhoneValid = computed(() => {
   if (!isGuestCheckout.value) return true
   return phonePattern.test(guestPhone.value.trim())
 })
+
+const handleGuestPhoneInput = (event: Event) => {
+  const nextValue = String((event.target as HTMLInputElement | null)?.value || '')
+  const shippingPhone = shippingAddress.value.receiver_phone
+
+  guestPhone.value = nextValue
+  guestPhoneAutoManaged.value = nextValue === '' || nextValue === shippingPhone
+}
 
 const guestEmailValid = computed(() => {
   if (!isGuestCheckout.value) return true
@@ -1298,6 +1317,26 @@ watch(
     debouncedLoadPreview()
   },
   { deep: true }
+)
+
+watch(
+  () => [shippingAddress.value.receiver_phone, shouldSyncGuestPhoneFromShipping.value],
+  ([receiverPhone, shouldSync]) => {
+    if (!shouldSync) return
+    guestPhone.value = String(receiverPhone || '')
+  },
+  { immediate: true }
+)
+
+watch(
+  () => isGuestCheckout.value,
+  (isGuest) => {
+    if (!isGuest) return
+    if (!guestPhone.value.trim()) {
+      guestPhoneAutoManaged.value = true
+    }
+  },
+  { immediate: true }
 )
 
 watch(walletOnlyPayment, (v) => {
