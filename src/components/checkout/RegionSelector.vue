@@ -78,10 +78,10 @@
             class="relative z-10 flex w-full flex-col overflow-hidden border theme-panel shadow-2xl"
             :class="isDesktop
               ? 'max-h-[80vh] max-w-4xl rounded-[28px]'
-              : 'h-[86dvh] rounded-t-[28px] border-b-0'"
+              : 'h-[92dvh] rounded-t-[28px] border-b-0'"
           >
             <div class="flex min-h-0 flex-1 flex-col">
-              <div class="border-b theme-border px-5 py-4 sm:px-6">
+              <div class="border-b theme-border px-4 py-3 sm:px-6 sm:py-4">
                 <div v-if="!isDesktop" class="mb-3 flex justify-center">
                   <span class="h-1.5 w-12 rounded-full bg-gray-300 dark:bg-white/15" />
                 </div>
@@ -110,35 +110,66 @@
                   </button>
                 </div>
 
-                <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div class="mt-4 space-y-3">
                   <button
-                    v-for="step in stepItems"
-                    :key="step.key"
                     type="button"
-                    class="rounded-2xl border px-3 py-3 text-left transition-all duration-200"
-                    :class="stepButtonClass(step)"
-                    :disabled="!step.available"
-                    @click="handleStepClick(step.key)"
+                    class="w-full rounded-3xl border px-3.5 py-3 text-left transition-all duration-200 sm:px-5 sm:py-4"
+                    :class="activeStepCardClass"
+                    @click="handleStepClick(activeStep.key)"
                   >
-                    <div class="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
-                      {{ step.index }}
-                    </div>
-                    <div class="mt-1 text-sm font-semibold">
-                      {{ step.label }}
-                    </div>
-                    <div class="mt-1 text-xs opacity-80">
-                      {{ step.value || t('checkout.shippingWaitingSelection') }}
+                    <div class="flex items-start justify-between gap-4">
+                      <div class="min-w-0">
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-70">
+                          {{ activeStep.index }}
+                        </div>
+                        <div class="mt-1 text-sm font-semibold sm:text-lg">
+                          {{ activeStep.label }}
+                        </div>
+                        <div class="mt-1 truncate text-xs opacity-90 sm:mt-2 sm:text-base">
+                          {{ activeStep.value || t('checkout.shippingWaitingSelection') }}
+                        </div>
+                      </div>
+                      <span
+                        class="hidden shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] sm:inline-flex"
+                        :class="activeStepBadgeClass"
+                      >
+                        {{ t('checkout.shippingCurrentStep') }}
+                      </span>
                     </div>
                   </button>
+
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      v-for="step in stepItems"
+                      :key="step.key"
+                      type="button"
+                      class="min-w-0 rounded-full border px-2.5 py-1.5 text-left transition-all duration-200 sm:px-3 sm:py-2"
+                      :class="summaryStepClass(step)"
+                      :disabled="!step.available"
+                      @click="handleStepClick(step.key)"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-70">
+                          {{ step.index }}
+                        </span>
+                        <span class="text-xs font-semibold sm:text-sm">
+                          {{ step.label }}
+                        </span>
+                        <span class="max-w-[6rem] truncate text-xs opacity-80 sm:max-w-[12rem]">
+                          {{ step.value || t('checkout.shippingWaitingSelection') }}
+                        </span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 touch-pan-y sm:px-6 sm:py-5">
-                <div class="mb-4 flex flex-wrap items-center gap-2">
+              <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 touch-pan-y sm:px-6 sm:py-5">
+                <div class="mb-3 flex flex-wrap items-center gap-2 sm:mb-4">
                   <span class="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                     {{ currentLevelLabel }}
                   </span>
-                  <span class="text-xs theme-text-muted">
+                  <span v-if="isDesktop" class="text-xs theme-text-muted">
                     {{ t('checkout.shippingSelectStep') }}
                   </span>
                 </div>
@@ -187,8 +218,8 @@
                 </div>
               </div>
 
-              <div class="border-t theme-border px-5 py-4 sm:px-6">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div class="border-t theme-border px-4 py-3 sm:px-6 sm:py-4">
+                <div v-if="isDesktop" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div class="min-w-0">
                     <div class="text-xs font-semibold uppercase tracking-[0.16em] theme-text-muted">
                       {{ t('checkout.shippingRegionSummary') }}
@@ -200,6 +231,15 @@
                   <button
                     type="button"
                     class="theme-btn-inline-md theme-btn-secondary border"
+                    @click="closeSelector"
+                  >
+                    {{ completeSelection ? t('checkout.shippingCompleteSelection') : t('common.cancel') }}
+                  </button>
+                </div>
+                <div v-else>
+                  <button
+                    type="button"
+                    class="w-full rounded-2xl border px-4 py-3 text-sm font-semibold theme-btn-secondary"
                     @click="closeSelector"
                   >
                     {{ completeSelection ? t('checkout.shippingCompleteSelection') : t('common.cancel') }}
@@ -301,6 +341,22 @@ const stepItems = computed(() => [
 const currentLevelLabel = computed(() => {
   const current = stepItems.value.find((item) => item.key === activeLevel.value)
   return current?.label || t('checkout.shippingProvince')
+})
+
+const activeStep = computed<{
+  key: AddressLevel
+  index: string
+  label: string
+  value: string
+  available: boolean
+}>(() => {
+  return stepItems.value.find((item) => item.key === activeLevel.value) ?? {
+    key: 'province',
+    index: '01',
+    label: t('checkout.shippingProvince'),
+    value: '',
+    available: true,
+  }
 })
 
 const currentOptions = computed(() => {
@@ -442,7 +498,11 @@ const closeSelector = () => {
   visible.value = false
 }
 
-const stepButtonClass = (step: {
+const activeStepCardClass = computed(() => 'border-primary/20 bg-primary/10 text-primary shadow-sm')
+
+const activeStepBadgeClass = computed(() => 'bg-primary/15 text-primary')
+
+const summaryStepClass = (step: {
   key: AddressLevel
   value: string
   available: boolean
@@ -451,7 +511,7 @@ const stepButtonClass = (step: {
     return 'border-gray-200 bg-gray-50 text-gray-400 opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-gray-500'
   }
   if (activeLevel.value === step.key) {
-    return 'border-primary/20 bg-primary/10 text-primary shadow-sm'
+    return 'border-primary/20 bg-primary/10 text-primary'
   }
   if (step.value) {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
