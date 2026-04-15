@@ -225,12 +225,6 @@
                 class="w-full form-input-lg md:col-span-2"
                 :placeholder="t('checkout.guestEmailPlaceholder')"
               />
-              <p
-                v-if="orderRequiresShippingAddress"
-                class="text-xs theme-text-muted md:col-span-2"
-              >
-                {{ t('checkout.guestPhoneSyncHint') }}
-              </p>
             </div>
 
             <div v-if="checkoutMode === 'guest' && guestCaptchaEnabled" class="space-y-2">
@@ -253,13 +247,11 @@
             <div v-if="checkoutMode === 'guest'" class="mb-3 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
               <p class="font-semibold">{{ t('checkout.guestInstructions.title') }}</p>
               <ul class="mt-2 space-y-1 list-disc pl-5">
-                <li>{{ t('checkout.guestInstructions.email') }}</li>
+                <li v-if="orderRequiresShippingAddress">{{ t('checkout.guestPhoneSyncHint') }}</li>
                 <li>{{ t('checkout.guestInstructions.password') }}</li>
+                <li>{{ t('checkout.guestInstructions.email') }}</li>
               </ul>
             </div>
-            <p v-if="checkoutMode === 'guest'" class="text-xs theme-text-muted">
-              {{ t('checkout.guestTip') }}
-            </p>
             <p v-if="checkoutMode === 'guest' && guestPhone && !guestPhoneValid" class="text-xs text-red-500">
               {{ t('error.phone_invalid') }}
             </p>
