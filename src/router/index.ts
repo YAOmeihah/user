@@ -268,6 +268,7 @@ const router = createRouter({
             path: '/support',
             name: 'support',
             component: () => import('../views/Support.vue'),
+            meta: { hideFooter: true, lockViewport: true },
         },
         {
             path: '/auth/login',
