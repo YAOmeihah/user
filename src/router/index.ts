@@ -265,6 +265,11 @@ const router = createRouter({
             props: { type: 'privacy' }
         },
         {
+            path: '/support',
+            name: 'support',
+            component: () => import('../views/Support.vue'),
+        },
+        {
             path: '/auth/login',
             name: 'user-login',
             component: loginViewLoader,
