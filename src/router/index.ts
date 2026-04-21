@@ -265,6 +265,12 @@ const router = createRouter({
             props: { type: 'privacy' }
         },
         {
+            path: '/support',
+            name: 'support',
+            component: () => import('../views/Support.vue'),
+            meta: { hideFooter: true, lockViewport: true },
+        },
+        {
             path: '/auth/login',
             name: 'user-login',
             component: loginViewLoader,
