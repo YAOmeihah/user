@@ -677,6 +677,8 @@ import {
   buildMobileCheckoutFlow,
   isMobileBuyerReady,
   isMobileManualFormReady,
+  isMobileStepConfirmed,
+  isMobileStepDirty,
   isMobileShippingReady,
   resolveExpandedMobileSection,
   type MobileCheckoutSectionKey,
@@ -1357,6 +1359,8 @@ const checkoutAlert = computed<PageAlert | null>(() => {
 })
 
 const mobileExpandedSection = ref<MobileCheckoutSectionKey | null>(null)
+type MobileConfirmableSectionKey = 'shipping' | 'buyer' | 'payment'
+const mobileConfirmedFingerprints = ref<Partial<Record<MobileConfirmableSectionKey, string>>>({})
 
 const maskPhone = (value: string) => {
   const trimmed = value.trim()
@@ -1380,12 +1384,7 @@ const mobileShippingReady = computed(() => isMobileShippingReady({
   detailAddress: shippingAddress.value.detail_address,
 }))
 
-const mobileShippingComplete = computed(() => {
-  if (!orderRequiresShippingAddress.value) return true
-  return mobileShippingReady.value
-})
-
-const mobileBuyerComplete = computed(() => {
+const mobileBuyerReady = computed(() => {
   return isMobileBuyerReady({
     isAuthenticated: userAuthStore.isAuthenticated,
     checkoutMode: checkoutMode.value,
@@ -1397,11 +1396,73 @@ const mobileBuyerComplete = computed(() => {
   })
 })
 
-const mobilePaymentComplete = computed(() => {
+const mobilePaymentReady = computed(() => {
   if (walletOnlyPayment.value) return expectedOnlinePayCents.value <= 0
   if (!requiresOnlineChannel.value) return true
   return Boolean(selectedChannelId.value) && !selectedChannelAmountHint.value
 })
+
+const mobileShippingFingerprint = computed(() => JSON.stringify({
+  requiresShipping: orderRequiresShippingAddress.value,
+  address: buildShippingAddressPayload() ?? null,
+}))
+
+const mobileBuyerFingerprint = computed(() => JSON.stringify({
+  isAuthenticated: userAuthStore.isAuthenticated,
+  checkoutMode: checkoutMode.value,
+  guestPhone: guestPhone.value.trim(),
+  guestEmail: guestEmail.value.trim(),
+  guestPassword: guestPassword.value,
+  guestCaptchaComplete: guestCaptchaComplete.value,
+  manualFormData: buildManualFormDataPayload(),
+}))
+
+const mobilePaymentFingerprint = computed(() => JSON.stringify({
+  useBalance: useBalance.value,
+  selectedChannelId: requiresOnlineChannel.value ? selectedChannelId.value : null,
+  requiresOnlineChannel: requiresOnlineChannel.value,
+  expectedOnlinePayCents: expectedOnlinePayCents.value,
+  walletOnlyPayment: walletOnlyPayment.value,
+}))
+
+const mobileShippingDirty = computed(() => {
+  if (!orderRequiresShippingAddress.value) return false
+  return isMobileStepDirty({
+    currentFingerprint: mobileShippingFingerprint.value,
+    confirmedFingerprint: mobileConfirmedFingerprints.value.shipping,
+  })
+})
+
+const mobileBuyerDirty = computed(() => isMobileStepDirty({
+  currentFingerprint: mobileBuyerFingerprint.value,
+  confirmedFingerprint: mobileConfirmedFingerprints.value.buyer,
+}))
+
+const mobilePaymentDirty = computed(() => isMobileStepDirty({
+  currentFingerprint: mobilePaymentFingerprint.value,
+  confirmedFingerprint: mobileConfirmedFingerprints.value.payment,
+}))
+
+const mobileShippingComplete = computed(() => {
+  if (!orderRequiresShippingAddress.value) return true
+  return isMobileStepConfirmed({
+    ready: mobileShippingReady.value,
+    currentFingerprint: mobileShippingFingerprint.value,
+    confirmedFingerprint: mobileConfirmedFingerprints.value.shipping,
+  })
+})
+
+const mobileBuyerComplete = computed(() => isMobileStepConfirmed({
+  ready: mobileBuyerReady.value,
+  currentFingerprint: mobileBuyerFingerprint.value,
+  confirmedFingerprint: mobileConfirmedFingerprints.value.buyer,
+}))
+
+const mobilePaymentComplete = computed(() => isMobileStepConfirmed({
+  ready: mobilePaymentReady.value,
+  currentFingerprint: mobilePaymentFingerprint.value,
+  confirmedFingerprint: mobileConfirmedFingerprints.value.payment,
+}))
 
 const mobileFlowState = computed(() => buildMobileCheckoutFlow({
   hasShippingSection: orderRequiresShippingAddress.value,
@@ -1416,9 +1477,18 @@ const mobileStatusText = computed(() => {
   if (previewLoading.value || couponRefreshing.value) return previewStatusText.value
 
   const action = mobileFlowState.value.primaryActionKey
-  if (action === 'saveShipping') return t('checkout.mobile.shippingMissing')
-  if (action === 'continueBuyer') return t('checkout.mobile.buyerMissing')
-  if (action === 'choosePayment') return t('checkout.mobile.paymentMissing')
+  if (action === 'saveShipping') {
+    if (mobileShippingReady.value) return t('checkout.mobile.actionSaveShipping')
+    return t('checkout.mobile.shippingMissing')
+  }
+  if (action === 'continueBuyer') {
+    if (mobileBuyerReady.value) return t('checkout.mobile.actionContinueBuyer')
+    return t('checkout.mobile.buyerMissing')
+  }
+  if (action === 'choosePayment') {
+    if (mobilePaymentReady.value) return t('checkout.mobile.actionChoosePayment')
+    return t('checkout.mobile.paymentMissing')
+  }
   return t('checkout.mobile.readyToSubmit')
 })
 
@@ -1504,9 +1574,18 @@ const mobileDisplaySections = computed(() => {
     payment: paymentSummaryLines,
   }
 
+  const dirtyMap: Record<MobileCheckoutSectionKey, boolean> = {
+    items: false,
+    shipping: mobileShippingDirty.value,
+    buyer: mobileBuyerDirty.value,
+    coupon: false,
+    payment: mobilePaymentDirty.value,
+  }
+
   return state.visibleSectionKeys.map((key) => {
     const complete = state.completedSectionKeys.includes(key)
     const recommended = state.recommendedSectionKey === key
+    const dirty = dirtyMap[key]
 
     return {
       key,
@@ -1515,6 +1594,8 @@ const mobileDisplaySections = computed(() => {
         ? ''
         : complete
           ? t('checkout.mobile.complete')
+          : dirty
+            ? t('checkout.mobile.needsReconfirm')
           : recommended
             ? t('checkout.mobile.current')
             : key === 'coupon'
@@ -1538,6 +1619,13 @@ const scrollMobileSectionIntoView = async (sectionKey: MobileCheckoutSectionKey)
   }
 }
 
+const confirmMobileSection = (sectionKey: MobileConfirmableSectionKey, fingerprint: string) => {
+  mobileConfirmedFingerprints.value = {
+    ...mobileConfirmedFingerprints.value,
+    [sectionKey]: fingerprint,
+  }
+}
+
 watch(mobileFlowState, (state) => {
   mobileExpandedSection.value = resolveExpandedMobileSection({
     expandedSectionKey: mobileExpandedSection.value,
@@ -1558,16 +1646,36 @@ const handleMobilePrimaryAction = async () => {
   if (action === 'saveShipping') {
     mobileExpandedSection.value = 'shipping'
     await scrollMobileSectionIntoView('shipping')
+    if (!mobileShippingReady.value) return
+
+    confirmMobileSection('shipping', mobileShippingFingerprint.value)
+    await nextTick()
+    if (mobileFlowState.value.recommendedSectionKey !== 'shipping') {
+      mobileExpandedSection.value = mobileFlowState.value.recommendedSectionKey
+      await scrollMobileSectionIntoView(mobileFlowState.value.recommendedSectionKey)
+    }
     return
   }
   if (action === 'continueBuyer') {
     mobileExpandedSection.value = 'buyer'
     await scrollMobileSectionIntoView('buyer')
+    if (!mobileBuyerReady.value) return
+
+    confirmMobileSection('buyer', mobileBuyerFingerprint.value)
+    await nextTick()
+    if (mobileFlowState.value.recommendedSectionKey !== 'buyer') {
+      mobileExpandedSection.value = mobileFlowState.value.recommendedSectionKey
+      await scrollMobileSectionIntoView(mobileFlowState.value.recommendedSectionKey)
+    }
     return
   }
   if (action === 'choosePayment') {
     mobileExpandedSection.value = 'payment'
     await scrollMobileSectionIntoView('payment')
+    if (!mobilePaymentReady.value) return
+
+    confirmMobileSection('payment', mobilePaymentFingerprint.value)
+    await nextTick()
     return
   }
 

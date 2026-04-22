@@ -55,6 +55,17 @@ export interface MobileBuyerReadinessInput {
   captchaComplete: boolean
 }
 
+export interface MobileStepConfirmationInput {
+  ready: boolean
+  currentFingerprint: string
+  confirmedFingerprint?: string | null
+}
+
+export interface MobileStepDirtyInput {
+  currentFingerprint: string
+  confirmedFingerprint?: string | null
+}
+
 const phonePattern = /^\+?[0-9\-()\s]{6,20}$/
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const meaningfulTextTypes = new Set(['text', 'textarea'])
@@ -143,6 +154,27 @@ export const isMobileBuyerReady = ({
   if (trimmedEmail && !emailPattern.test(trimmedEmail)) return false
 
   return captchaComplete
+}
+
+export const isMobileStepConfirmed = ({
+  ready,
+  currentFingerprint,
+  confirmedFingerprint,
+}: MobileStepConfirmationInput) => {
+  if (!ready) return false
+  if (!currentFingerprint) return false
+
+  return currentFingerprint === String(confirmedFingerprint || '')
+}
+
+export const isMobileStepDirty = ({
+  currentFingerprint,
+  confirmedFingerprint,
+}: MobileStepDirtyInput) => {
+  const lastConfirmedFingerprint = String(confirmedFingerprint || '')
+  if (!lastConfirmedFingerprint) return false
+
+  return currentFingerprint !== lastConfirmedFingerprint
 }
 
 const sectionIsComplete = (

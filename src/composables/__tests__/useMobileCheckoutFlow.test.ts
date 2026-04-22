@@ -3,6 +3,8 @@ import {
   buildMobileCheckoutFlow,
   isMobileBuyerReady,
   isMobileManualFormReady,
+  isMobileStepConfirmed,
+  isMobileStepDirty,
   isMobileShippingReady,
   resolveExpandedMobileSection,
 } from '../useMobileCheckoutFlow'
@@ -124,5 +126,26 @@ describe('mobile section readiness', () => {
     })
 
     expect(ready).toBe(false)
+  })
+})
+
+describe('mobile step confirmation', () => {
+  it('does not mark a ready step as confirmed before the user explicitly confirms it', () => {
+    const confirmed = isMobileStepConfirmed({
+      ready: true,
+      currentFingerprint: '{"receiver":"alice"}',
+      confirmedFingerprint: '',
+    })
+
+    expect(confirmed).toBe(false)
+  })
+
+  it('marks a previously confirmed step as dirty after the user edits it', () => {
+    const dirty = isMobileStepDirty({
+      currentFingerprint: '{"receiver":"bob"}',
+      confirmedFingerprint: '{"receiver":"alice"}',
+    })
+
+    expect(dirty).toBe(true)
   })
 })
