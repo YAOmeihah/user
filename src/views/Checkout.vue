@@ -6,7 +6,7 @@
         <p class="text-sm theme-text-secondary">{{ t('checkout.subtitle') }}</p>
       </div>
 
-      <div class="mb-8 rounded-2xl border theme-border theme-panel-soft p-4 backdrop-blur">
+      <div class="mb-8 hidden rounded-2xl border theme-border theme-panel-soft p-4 backdrop-blur lg:block">
         <div class="flex items-center">
           <template v-for="(step, idx) in flowSteps" :key="step.key">
             <div class="flex items-center gap-2" :class="idx === 0 ? '' : 'flex-1'">
@@ -42,103 +42,74 @@
         </router-link>
       </div>
 
-      <div v-else class="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div class="space-y-6 lg:col-span-2">
-          <div class="rounded-2xl border theme-panel p-6">
-            <h2 class="mb-4 text-lg font-bold theme-text-primary">{{ t('checkout.itemsTitle') }}</h2>
-            <div class="space-y-4">
+      <div v-else>
+        <MobileCheckoutFlow
+          class="lg:hidden"
+          :sections="mobileDisplaySections"
+          :expanded-section="mobileExpandedSection"
+          :top-label="t('checkout.mobile.currentNeeded')"
+          :status-text="mobileStatusText"
+          :total-text="mobileTotalText"
+          :primary-action-label="mobilePrimaryActionLabel"
+          :primary-action-disabled="submitting || syncingStock"
+          :edit-label="t('checkout.mobile.edit')"
+          :collapse-label="t('checkout.mobile.collapse')"
+          @update:expanded-section="handleMobileSectionChange"
+          @primary-action="handleMobilePrimaryAction"
+        >
+          <template #section-items>
+            <div class="space-y-3">
               <div
                 v-for="item in cartItems"
                 :key="cartItemKey(item)"
-                class="rounded-xl border p-4"
+                class="rounded-xl border p-3"
                 :class="itemStockExceeded(item)
                   ? 'border-amber-200 bg-amber-50/60 dark:border-amber-700 dark:bg-amber-950/20'
                   : 'border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-black/20'"
               >
-                <div class="flex items-start justify-between gap-4">
-                  <div class="flex min-w-0 items-start gap-3">
-                    <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm dark:border-white/10 dark:bg-black/30 sm:h-20 sm:w-20">
-                      <img
-                        v-if="checkoutItemImage(item)"
-                        :src="checkoutItemImage(item)"
-                        :alt="getLocalizedText(item.title)"
-                        loading="lazy"
-                        decoding="async"
-                        class="h-full w-full object-cover"
-                      />
-                      <div v-else class="flex h-full w-full items-center justify-center theme-text-muted">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="1.5"
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                      </div>
-                    </div>
-                    <div class="min-w-0">
-                      <router-link
-                        :to="`/products/${item.slug}`"
-                        class="line-clamp-2 font-semibold theme-link"
-                      >
-                        {{ getLocalizedText(item.title) }}
-                      </router-link>
-                      <div class="mt-1 text-xs theme-text-muted">{{ t('checkout.quantityLabel') }}：{{ item.quantity }}</div>
-                      <div v-if="itemSkuDisplay(item)" class="mt-1 text-xs theme-text-muted">{{ t('checkout.skuLabel') }}：{{ itemSkuDisplay(item) }}</div>
-                      <div
-                        v-if="itemStockHint(item)"
-                        class="mt-1 text-xs"
-                        :class="itemStockExceeded(item)
-                          ? 'text-amber-600 dark:text-amber-300'
-                          : 'theme-text-muted'"
-                      >
-                        {{ itemStockHint(item) }}
-                      </div>
-                      <div class="mt-2 flex flex-wrap gap-2">
-                        <span
-                          class="theme-badge text-xs uppercase tracking-wider"
-                          :class="item.purchaseType === 'guest'
-                            ? 'theme-badge-warning'
-                            : 'theme-badge-success'"
-                        >
-                          {{ item.purchaseType === 'guest' ? t('productPurchase.guest') : t('productPurchase.member') }}
-                        </span>
-                        <span
-                          class="theme-badge text-xs uppercase tracking-wider"
-                          :class="item.fulfillmentType === 'auto'
-                            ? 'theme-badge-info'
-                            : 'theme-badge-neutral'"
-                        >
-                          {{ item.fulfillmentType === 'auto' ? t('products.fulfillmentType.auto') : t('products.fulfillmentType.manual') }}
-                        </span>
-                      </div>
+                <div class="flex items-start gap-3">
+                  <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/10 dark:bg-black/30">
+                    <img
+                      v-if="checkoutItemImage(item)"
+                      :src="checkoutItemImage(item)"
+                      :alt="getLocalizedText(item.title)"
+                      loading="lazy"
+                      decoding="async"
+                      class="h-full w-full object-cover"
+                    />
+                    <div v-else class="flex h-full w-full items-center justify-center theme-text-muted">
+                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="1.5"
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
                     </div>
                   </div>
-                  <div class="text-right">
-                    <div class="text-xs uppercase tracking-wider theme-text-muted">{{ t('checkout.previewTotal') }}</div>
-                    <div class="text-sm font-semibold theme-text-primary">{{ itemSubtotal(item) }}</div>
+                  <div class="min-w-0 flex-1">
+                    <router-link :to="`/products/${item.slug}`" class="line-clamp-2 text-sm font-semibold theme-link">
+                      {{ getLocalizedText(item.title) }}
+                    </router-link>
+                    <div class="mt-1 text-xs theme-text-muted">{{ t('checkout.quantityLabel') }}：{{ item.quantity }}</div>
+                    <div v-if="itemSkuDisplay(item)" class="mt-1 text-xs theme-text-muted">{{ t('checkout.skuLabel') }}：{{ itemSkuDisplay(item) }}</div>
+                    <div
+                      v-if="itemStockHint(item)"
+                      class="mt-1 text-xs"
+                      :class="itemStockExceeded(item) ? 'text-amber-600 dark:text-amber-300' : 'theme-text-muted'"
+                    >
+                      {{ itemStockHint(item) }}
+                    </div>
+                    <div class="mt-2 text-sm font-semibold theme-text-primary">{{ itemSubtotal(item) }}</div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </template>
 
-          <CheckoutManualForm
-            :manual-form-products="manualFormProducts"
-            v-model="manualFormData"
-            :submit-attempted="submitAttempted"
-            :get-manual-field-label="getManualFieldLabel"
-            :get-manual-field-placeholder="getManualFieldPlaceholder"
-            :manual-field-error="manualFieldError"
-          />
-
-          <div v-if="orderRequiresShippingAddress" class="rounded-2xl border theme-panel p-6">
-            <div class="mb-4">
-              <h2 class="text-lg font-bold theme-text-primary">{{ t('checkout.shippingTitle') }}</h2>
-              <p class="mt-1 text-sm theme-text-muted">{{ t('checkout.shippingTip') }}</p>
-            </div>
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <template #section-shipping>
+            <div v-if="orderRequiresShippingAddress" class="space-y-3">
               <input
                 v-model="shippingAddress.receiver_name"
                 type="text"
@@ -153,227 +124,528 @@
                 class="w-full form-input-lg"
                 :placeholder="t('checkout.shippingReceiverPhone')"
               />
-              <div class="md:col-span-2">
-                <RegionSelector
-                  v-model="shippingAddress"
-                  :invalid="submitAttempted && shippingRegionMissing"
-                />
-              </div>
+              <RegionSelector
+                v-model="shippingAddress"
+                :invalid="submitAttempted && shippingRegionMissing"
+              />
               <textarea
                 v-model="shippingAddress.detail_address"
                 rows="3"
                 autocomplete="street-address"
-                class="w-full form-input-lg md:col-span-2"
+                class="w-full form-input-lg"
                 :placeholder="t('checkout.shippingDetailAddress')"
               />
+              <p v-if="submitAttempted && !shippingAddressValidation.valid" class="text-sm text-red-500">
+                {{ shippingAddressValidation.message }}
+              </p>
             </div>
-            <p v-if="submitAttempted && !shippingAddressValidation.valid" class="mt-3 text-sm text-red-500">
-              {{ shippingAddressValidation.message }}
-            </p>
-          </div>
+          </template>
 
-          <div class="rounded-2xl border theme-panel p-6">
-            <h2 class="mb-4 text-lg font-bold theme-text-primary">{{ t('checkout.couponTitle') }}</h2>
-            <input
-              v-model="couponCode"
-              type="text"
-              class="w-full form-input-lg"
-              :placeholder="t('checkout.couponPlaceholder')"
+          <template #section-buyer>
+            <div class="space-y-4">
+              <CheckoutManualForm
+                :manual-form-products="manualFormProducts"
+                v-model="manualFormData"
+                :submit-attempted="submitAttempted"
+                :embedded="true"
+                :compact="true"
+                :get-manual-field-label="getManualFieldLabel"
+                :get-manual-field-placeholder="getManualFieldPlaceholder"
+                :manual-field-error="manualFieldError"
+              />
+
+              <template v-if="!userAuthStore.isAuthenticated">
+                <div class="flex flex-wrap gap-3">
+                  <button
+                    @click="checkoutMode = 'guest'"
+                    class="theme-btn-inline-md"
+                    :class="checkoutMode === 'guest'
+                      ? 'theme-btn-primary border border-transparent'
+                      : 'border theme-btn-secondary'"
+                  >
+                    {{ t('checkout.guestPurchase') }}
+                  </button>
+                  <router-link to="/auth/login" class="theme-btn-inline-md border theme-btn-secondary">
+                    {{ t('checkout.memberPurchase') }}
+                  </router-link>
+                </div>
+
+                <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-3">
+                  <input
+                    :value="guestPhone"
+                    type="tel"
+                    class="w-full form-input-lg"
+                    :placeholder="t('checkout.guestPhonePlaceholder')"
+                    @input="handleGuestPhoneInput"
+                  />
+                  <input
+                    v-model="guestPassword"
+                    type="password"
+                    class="w-full form-input-lg"
+                    :placeholder="t('checkout.guestPasswordPlaceholder')"
+                  />
+                  <input
+                    v-model="guestEmail"
+                    type="email"
+                    class="w-full form-input-lg"
+                    :placeholder="t('checkout.guestEmailPlaceholder')"
+                  />
+                </div>
+
+                <div v-if="checkoutMode === 'guest' && guestCaptchaEnabled" class="space-y-2">
+                  <p class="text-xs font-semibold uppercase tracking-[0.14em] theme-text-muted">{{ t('auth.common.captchaLabel') }}</p>
+                  <ImageCaptcha
+                    v-if="captchaProvider === 'image'"
+                    ref="guestImageCaptchaRef"
+                    v-model="guestCaptchaPayload"
+                    :disabled="submitting"
+                    @config-stale="handleGuestCaptchaConfigStale"
+                  />
+                  <TurnstileCaptcha
+                    v-else-if="captchaProvider === 'turnstile'"
+                    ref="guestTurnstileRef"
+                    v-model="guestTurnstileToken"
+                    :site-key="guestTurnstileSiteKey"
+                  />
+                </div>
+
+                <div v-if="checkoutMode === 'guest'" class="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+                  <p class="font-semibold">{{ t('checkout.guestInstructions.title') }}</p>
+                  <p v-if="orderRequiresShippingAddress" class="mt-2">{{ t('checkout.guestPhoneSyncHint') }}</p>
+                  <p class="mt-2">{{ t('checkout.guestInstructions.password') }}</p>
+                  <p class="mt-2">{{ t('checkout.guestInstructions.email') }}</p>
+                </div>
+
+                <p v-if="checkoutMode === 'guest' && guestPhone && !guestPhoneValid" class="text-xs text-red-500">
+                  {{ t('error.phone_invalid') }}
+                </p>
+                <p v-if="checkoutMode === 'guest' && guestEmail && !guestEmailValid" class="text-xs text-red-500">
+                  {{ t('error.email_invalid') }}
+                </p>
+                <p
+                  v-if="checkoutMode === 'guest' && guestCaptchaEnabled && submitAttempted && !guestCaptchaComplete"
+                  class="text-xs text-red-500"
+                >
+                  {{ t('auth.common.captchaRequired') }}
+                </p>
+              </template>
+            </div>
+          </template>
+
+          <template #section-coupon>
+            <div class="space-y-3">
+              <input
+                v-model="couponCode"
+                type="text"
+                class="w-full form-input-lg"
+                :placeholder="t('checkout.couponPlaceholder')"
+              />
+              <p v-if="previewLoading || couponRefreshing" class="text-xs theme-text-muted">
+                {{ previewStatusText }}
+              </p>
+            </div>
+          </template>
+
+          <template #section-payment>
+            <div class="space-y-3">
+              <div v-if="showBalanceOption" class="rounded-lg border theme-surface-soft p-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-xs theme-text-muted">{{ t('payment.walletBalanceLabel') }}</div>
+                    <div class="mt-1 text-sm font-semibold theme-text-primary">
+                      {{ walletLoading ? t('common.loading') : formatPrice(walletBalance, previewCurrency) }}
+                    </div>
+                  </div>
+                  <label class="inline-flex items-center gap-2 text-xs theme-text-secondary">
+                    <input v-model="useBalance" type="checkbox" class="h-4 w-4 accent-primary" :disabled="walletOnlyPayment" />
+                    <span>{{ t('payment.useBalance') }}</span>
+                  </label>
+                </div>
+                <div v-if="walletOnlyPayment" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                  {{ t('payment.walletOnlyHint') }}
+                </div>
+                <div v-if="useBalance" class="mt-2 space-y-1 text-xs theme-text-muted">
+                  <div>{{ t('payment.walletDeductLabel') }}：{{ expectedWalletPaidDisplay }}</div>
+                  <div v-if="!walletOnlyPayment">{{ t('payment.onlinePayLabel') }}：{{ expectedOnlinePayDisplay }}</div>
+                  <div v-if="walletOnlyPayment && expectedOnlinePayCents > 0" class="text-amber-600 dark:text-amber-400">
+                    {{ t('payment.walletInsufficientHint') }}
+                  </div>
+                </div>
+              </div>
+
+              <template v-if="!walletOnlyPayment">
+                <div v-if="requiresOnlineChannel && paymentChannels.length > 0" class="space-y-2">
+                  <button
+                    v-for="channel in paymentChannels"
+                    :key="channel.id"
+                    type="button"
+                    class="w-full rounded-lg border px-3 py-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                    :class="selectedChannelId === channel.id && !isChannelDisabledForAmount(channel) ? 'theme-selected-surface' : 'theme-interactive-surface'"
+                    :disabled="isChannelDisabledForAmount(channel)"
+                    :title="isChannelDisabledForAmount(channel) ? channelAmountLimitHint(channel) : ''"
+                    @click="handleSelectChannel(channel)"
+                  >
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="text-sm font-medium theme-text-primary">{{ channel.name }}</div>
+                        <div class="mt-1 text-xs theme-text-muted">
+                          {{ t('payment.feeLabel') }}：{{ formatChannelFeeRate(channel) }}
+                        </div>
+                      </div>
+                      <div class="text-xs theme-text-muted">
+                        {{ formatChannelFixedFee(channel) }}
+                      </div>
+                    </div>
+                    <div v-if="isChannelDisabledForAmount(channel)" class="mt-2 text-xs text-amber-600">
+                      {{ channelAmountLimitHint(channel) }}
+                    </div>
+                  </button>
+                </div>
+                <div v-else-if="requiresOnlineChannel && paymentChannels.length === 0" class="text-xs theme-text-muted">
+                  {{ t('checkout.noPaymentChannels') }}
+                </div>
+              </template>
+
+              <div v-if="!requiresOnlineChannel" class="text-xs text-emerald-600 dark:text-emerald-400">
+                {{ t('checkout.walletCoversAll') }}
+              </div>
+              <p v-if="selectedChannelAmountHint" class="text-xs text-amber-600 dark:text-amber-300">
+                {{ selectedChannelAmountHint }}
+              </p>
+            </div>
+          </template>
+        </MobileCheckoutFlow>
+
+        <div class="hidden grid-cols-1 gap-8 lg:grid lg:grid-cols-3">
+          <div class="space-y-6 lg:col-span-2">
+            <div class="rounded-2xl border theme-panel p-6">
+              <h2 class="mb-4 text-lg font-bold theme-text-primary">{{ t('checkout.itemsTitle') }}</h2>
+              <div class="space-y-4">
+                <div
+                  v-for="item in cartItems"
+                  :key="cartItemKey(item)"
+                  class="rounded-xl border p-4"
+                  :class="itemStockExceeded(item)
+                    ? 'border-amber-200 bg-amber-50/60 dark:border-amber-700 dark:bg-amber-950/20'
+                    : 'border-gray-100 bg-gray-50 dark:border-white/10 dark:bg-black/20'"
+                >
+                  <div class="flex items-start justify-between gap-4">
+                    <div class="flex min-w-0 items-start gap-3">
+                      <div class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm dark:border-white/10 dark:bg-black/30 sm:h-20 sm:w-20">
+                        <img
+                          v-if="checkoutItemImage(item)"
+                          :src="checkoutItemImage(item)"
+                          :alt="getLocalizedText(item.title)"
+                          loading="lazy"
+                          decoding="async"
+                          class="h-full w-full object-cover"
+                        />
+                        <div v-else class="flex h-full w-full items-center justify-center theme-text-muted">
+                          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="1.5"
+                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                      <div class="min-w-0">
+                        <router-link
+                          :to="`/products/${item.slug}`"
+                          class="line-clamp-2 font-semibold theme-link"
+                        >
+                          {{ getLocalizedText(item.title) }}
+                        </router-link>
+                        <div class="mt-1 text-xs theme-text-muted">{{ t('checkout.quantityLabel') }}：{{ item.quantity }}</div>
+                        <div v-if="itemSkuDisplay(item)" class="mt-1 text-xs theme-text-muted">{{ t('checkout.skuLabel') }}：{{ itemSkuDisplay(item) }}</div>
+                        <div
+                          v-if="itemStockHint(item)"
+                          class="mt-1 text-xs"
+                          :class="itemStockExceeded(item)
+                            ? 'text-amber-600 dark:text-amber-300'
+                            : 'theme-text-muted'"
+                        >
+                          {{ itemStockHint(item) }}
+                        </div>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                          <span
+                            class="theme-badge text-xs uppercase tracking-wider"
+                            :class="item.purchaseType === 'guest'
+                              ? 'theme-badge-warning'
+                              : 'theme-badge-success'"
+                          >
+                            {{ item.purchaseType === 'guest' ? t('productPurchase.guest') : t('productPurchase.member') }}
+                          </span>
+                          <span
+                            class="theme-badge text-xs uppercase tracking-wider"
+                            :class="item.fulfillmentType === 'auto'
+                              ? 'theme-badge-info'
+                              : 'theme-badge-neutral'"
+                          >
+                            {{ item.fulfillmentType === 'auto' ? t('products.fulfillmentType.auto') : t('products.fulfillmentType.manual') }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-xs uppercase tracking-wider theme-text-muted">{{ t('checkout.previewTotal') }}</div>
+                      <div class="text-sm font-semibold theme-text-primary">{{ itemSubtotal(item) }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <CheckoutManualForm
+              :manual-form-products="manualFormProducts"
+              v-model="manualFormData"
+              :submit-attempted="submitAttempted"
+              :get-manual-field-label="getManualFieldLabel"
+              :get-manual-field-placeholder="getManualFieldPlaceholder"
+              :manual-field-error="manualFieldError"
             />
-          </div>
 
-          <div
-            v-if="!userAuthStore.isAuthenticated"
-            class="space-y-4 rounded-2xl border theme-panel p-6"
-          >
-            <h2 class="text-lg font-bold theme-text-primary">{{ t('checkout.modeTitle') }}</h2>
-            <div class="flex flex-wrap gap-3">
-              <button
-                @click="checkoutMode = 'guest'"
-                class="theme-btn-inline-md"
-                :class="checkoutMode === 'guest'
-                  ? 'theme-btn-primary border border-transparent'
-                  : 'border theme-btn-secondary'"
-              >
-                {{ t('checkout.guestPurchase') }}
-              </button>
-              <router-link
-                to="/auth/login"
-                class="theme-btn-inline-md border theme-btn-secondary"
-              >
-                {{ t('checkout.memberPurchase') }}
-              </router-link>
-            </div>
-
-            <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <input
-                :value="guestPhone"
-                type="tel"
-                class="w-full form-input-lg"
-                :placeholder="t('checkout.guestPhonePlaceholder')"
-                @input="handleGuestPhoneInput"
-              />
-              <input
-                v-model="guestPassword"
-                type="password"
-                class="w-full form-input-lg"
-                :placeholder="t('checkout.guestPasswordPlaceholder')"
-              />
-              <input
-                v-model="guestEmail"
-                type="email"
-                class="w-full form-input-lg md:col-span-2"
-                :placeholder="t('checkout.guestEmailPlaceholder')"
-              />
-            </div>
-
-            <div v-if="checkoutMode === 'guest' && guestCaptchaEnabled" class="space-y-2">
-              <p class="text-xs font-semibold uppercase tracking-[0.14em] theme-text-muted">{{ t('auth.common.captchaLabel') }}</p>
-              <ImageCaptcha
-                v-if="captchaProvider === 'image'"
-                ref="guestImageCaptchaRef"
-                v-model="guestCaptchaPayload"
-                :disabled="submitting"
-                @config-stale="handleGuestCaptchaConfigStale"
-              />
-              <TurnstileCaptcha
-                v-else-if="captchaProvider === 'turnstile'"
-                ref="guestTurnstileRef"
-                v-model="guestTurnstileToken"
-                :site-key="guestTurnstileSiteKey"
-              />
-            </div>
-
-            <div v-if="checkoutMode === 'guest'" class="mb-3 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
-              <p class="font-semibold">{{ t('checkout.guestInstructions.title') }}</p>
-              <ul class="mt-2 space-y-1 list-disc pl-5">
-                <li v-if="orderRequiresShippingAddress">{{ t('checkout.guestPhoneSyncHint') }}</li>
-                <li>{{ t('checkout.guestInstructions.password') }}</li>
-                <li>{{ t('checkout.guestInstructions.email') }}</li>
-              </ul>
-            </div>
-            <p v-if="checkoutMode === 'guest' && guestPhone && !guestPhoneValid" class="text-xs text-red-500">
-              {{ t('error.phone_invalid') }}
-            </p>
-            <p v-if="checkoutMode === 'guest' && guestEmail && !guestEmailValid" class="text-xs text-red-500">
-              {{ t('error.email_invalid') }}
-            </p>
-          </div>
-        </div>
-
-        <div class="h-fit rounded-2xl border theme-panel p-6 lg:sticky lg:top-24">
-          <h2 class="mb-4 text-lg font-bold theme-text-primary">{{ t('checkout.submitTitle') }}</h2>
-          <div class="mb-4 rounded-lg border theme-surface-soft p-3 text-xs theme-text-muted">
-            {{ t('checkout.submitHint') }}
-          </div>
-
-          <div class="mb-4 space-y-3 text-sm theme-text-muted">
-            <div class="flex items-center justify-between">
-              <span>{{ t('cart.itemsCount') }}</span>
-              <span class="font-mono theme-text-primary">{{ totalItems }}</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span>{{ t('checkout.previewOriginal') }}</span>
-              <span class="font-mono theme-text-primary">{{ formatPrice(previewOriginal, previewCurrency) }}</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span>{{ t('checkout.previewCoupon') }}</span>
-              <span class="font-mono theme-text-primary">{{ formatPrice(previewCoupon, previewCurrency) }}</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span>{{ t('checkout.previewPromotion') }}</span>
-              <span class="font-mono theme-text-primary">{{ formatPrice(previewPromotion, previewCurrency) }}</span>
-            </div>
-            <div v-if="Number(previewMemberDiscount) > 0" class="flex items-center justify-between">
-              <span>{{ t('checkout.previewMemberDiscount') }}</span>
-              <span class="font-mono text-amber-600 dark:text-amber-300">-{{ formatPrice(previewMemberDiscount, previewCurrency) }}</span>
-            </div>
-            <div class="flex items-center justify-between border-t theme-border pt-3 theme-text-primary">
-              <span class="font-semibold">{{ t('checkout.previewTotal') }}</span>
-              <span class="font-mono text-lg font-bold">{{ formatPrice(previewTotal, previewCurrency) }}</span>
-            </div>
-          </div>
-
-          <div v-if="previewLoading || couponRefreshing" class="mb-3 text-xs theme-text-muted">
-            {{ previewStatusText }}
-          </div>
-          <div
-            v-if="checkoutAlert"
-            class="mb-4 rounded-lg border p-3 text-sm"
-            :class="pageAlertClass(checkoutAlert.level)"
-          >
-            {{ checkoutAlert.message }}
-          </div>
-
-          <!-- Payment Channel Selection -->
-          <div class="mb-4 border-t theme-border pt-4">
-            <h3 class="mb-3 text-sm font-bold theme-text-primary">{{ t('checkout.paymentMethod') }}</h3>
-
-            <!-- Wallet Balance -->
-            <div v-if="showBalanceOption" class="mb-3 rounded-lg border theme-surface-soft p-3">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-xs theme-text-muted">{{ t('payment.walletBalanceLabel') }}</div>
-                  <div class="mt-0.5 text-sm font-semibold theme-text-primary">
-                    {{ walletLoading ? t('common.loading') : formatPrice(walletBalance, previewCurrency) }}
-                  </div>
+            <div v-if="orderRequiresShippingAddress" class="rounded-2xl border theme-panel p-6">
+              <div class="mb-4">
+                <h2 class="text-lg font-bold theme-text-primary">{{ t('checkout.shippingTitle') }}</h2>
+                <p class="mt-1 text-sm theme-text-muted">{{ t('checkout.shippingTip') }}</p>
+              </div>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <input
+                  v-model="shippingAddress.receiver_name"
+                  type="text"
+                  autocomplete="name"
+                  class="w-full form-input-lg"
+                  :placeholder="t('checkout.shippingReceiverName')"
+                />
+                <input
+                  v-model="shippingAddress.receiver_phone"
+                  type="tel"
+                  autocomplete="tel"
+                  class="w-full form-input-lg"
+                  :placeholder="t('checkout.shippingReceiverPhone')"
+                />
+                <div class="md:col-span-2">
+                  <RegionSelector
+                    v-model="shippingAddress"
+                    :invalid="submitAttempted && shippingRegionMissing"
+                  />
                 </div>
-                <label class="inline-flex items-center gap-2 text-xs theme-text-secondary">
-                  <input v-model="useBalance" type="checkbox" class="h-4 w-4 accent-primary" :disabled="walletOnlyPayment" />
-                  <span>{{ t('payment.useBalance') }}</span>
-                </label>
+                <textarea
+                  v-model="shippingAddress.detail_address"
+                  rows="3"
+                  autocomplete="street-address"
+                  class="w-full form-input-lg md:col-span-2"
+                  :placeholder="t('checkout.shippingDetailAddress')"
+                />
               </div>
-              <div v-if="walletOnlyPayment" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                {{ t('payment.walletOnlyHint') }}
-              </div>
-              <div v-if="useBalance" class="mt-2 space-y-1 text-xs theme-text-muted">
-                <div>{{ t('payment.walletDeductLabel') }}：{{ expectedWalletPaidDisplay }}</div>
-                <div v-if="!walletOnlyPayment">{{ t('payment.onlinePayLabel') }}：{{ expectedOnlinePayDisplay }}</div>
-                <div v-if="walletOnlyPayment && expectedOnlinePayCents > 0" class="text-amber-600 dark:text-amber-400">
-                  {{ t('payment.walletInsufficientHint') }}
-                </div>
-              </div>
+              <p v-if="submitAttempted && !shippingAddressValidation.valid" class="mt-3 text-sm text-red-500">
+                {{ shippingAddressValidation.message }}
+              </p>
             </div>
 
-            <!-- Channel Grid (hidden in wallet-only mode) -->
-            <template v-if="!walletOnlyPayment">
-              <div v-if="requiresOnlineChannel && paymentChannels.length > 0" class="grid grid-cols-2 gap-2">
-                <button v-for="channel in paymentChannels" :key="channel.id"
-                  type="button"
-                  :disabled="isChannelDisabledForAmount(channel)"
-                  :title="isChannelDisabledForAmount(channel) ? channelAmountLimitHint(channel) : ''"
-                  @click="handleSelectChannel(channel)"
-                  class="text-left border rounded-lg p-2.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
-                  :class="selectedChannelId === channel.id && !isChannelDisabledForAmount(channel) ? 'theme-selected-surface' : 'theme-interactive-surface'">
-                  <div class="flex items-center gap-2">
-                    <img v-if="channel.icon" :src="getImageUrl(channel.icon)" loading="lazy" class="h-5 w-5 rounded object-contain shrink-0" />
-                    <div class="text-sm theme-text-primary font-medium truncate">{{ channel.name }}</div>
-                  </div>
-                  <div class="mt-1 space-y-0.5 text-xs theme-text-muted">
-                    <div>{{ t('payment.feeLabel') }}：{{ formatChannelFeeRate(channel) }}</div>
-                    <div>{{ t('payment.fixedFeeLabel') }}：{{ formatChannelFixedFee(channel) }}</div>
-                  </div>
-                  <div v-if="isChannelDisabledForAmount(channel)" class="mt-1 text-xs text-amber-600">
-                    {{ channelAmountLimitHint(channel) }}
-                  </div>
+            <div class="rounded-2xl border theme-panel p-6">
+              <h2 class="mb-4 text-lg font-bold theme-text-primary">{{ t('checkout.couponTitle') }}</h2>
+              <input
+                v-model="couponCode"
+                type="text"
+                class="w-full form-input-lg"
+                :placeholder="t('checkout.couponPlaceholder')"
+              />
+            </div>
+
+            <div
+              v-if="!userAuthStore.isAuthenticated"
+              class="space-y-4 rounded-2xl border theme-panel p-6"
+            >
+              <h2 class="text-lg font-bold theme-text-primary">{{ t('checkout.modeTitle') }}</h2>
+              <div class="flex flex-wrap gap-3">
+                <button
+                  @click="checkoutMode = 'guest'"
+                  class="theme-btn-inline-md"
+                  :class="checkoutMode === 'guest'
+                    ? 'theme-btn-primary border border-transparent'
+                    : 'border theme-btn-secondary'"
+                >
+                  {{ t('checkout.guestPurchase') }}
                 </button>
+                <router-link
+                  to="/auth/login"
+                  class="theme-btn-inline-md border theme-btn-secondary"
+                >
+                  {{ t('checkout.memberPurchase') }}
+                </router-link>
               </div>
-              <div v-else-if="requiresOnlineChannel && paymentChannels.length === 0" class="text-xs theme-text-muted">
-                {{ t('checkout.noPaymentChannels') }}
+
+              <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <input
+                  :value="guestPhone"
+                  type="tel"
+                  class="w-full form-input-lg"
+                  :placeholder="t('checkout.guestPhonePlaceholder')"
+                  @input="handleGuestPhoneInput"
+                />
+                <input
+                  v-model="guestPassword"
+                  type="password"
+                  class="w-full form-input-lg"
+                  :placeholder="t('checkout.guestPasswordPlaceholder')"
+                />
+                <input
+                  v-model="guestEmail"
+                  type="email"
+                  class="w-full form-input-lg md:col-span-2"
+                  :placeholder="t('checkout.guestEmailPlaceholder')"
+                />
               </div>
-            </template>
-            <div v-if="!requiresOnlineChannel" class="text-xs text-emerald-600 dark:text-emerald-400">
-              {{ t('checkout.walletCoversAll') }}
+
+              <div v-if="checkoutMode === 'guest' && guestCaptchaEnabled" class="space-y-2">
+                <p class="text-xs font-semibold uppercase tracking-[0.14em] theme-text-muted">{{ t('auth.common.captchaLabel') }}</p>
+                <ImageCaptcha
+                  v-if="captchaProvider === 'image'"
+                  ref="guestImageCaptchaRef"
+                  v-model="guestCaptchaPayload"
+                  :disabled="submitting"
+                  @config-stale="handleGuestCaptchaConfigStale"
+                />
+                <TurnstileCaptcha
+                  v-else-if="captchaProvider === 'turnstile'"
+                  ref="guestTurnstileRef"
+                  v-model="guestTurnstileToken"
+                  :site-key="guestTurnstileSiteKey"
+                />
+              </div>
+
+              <div v-if="checkoutMode === 'guest'" class="mb-3 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+                <p class="font-semibold">{{ t('checkout.guestInstructions.title') }}</p>
+                <ul class="mt-2 space-y-1 list-disc pl-5">
+                  <li v-if="orderRequiresShippingAddress">{{ t('checkout.guestPhoneSyncHint') }}</li>
+                  <li>{{ t('checkout.guestInstructions.password') }}</li>
+                  <li>{{ t('checkout.guestInstructions.email') }}</li>
+                </ul>
+              </div>
+              <p v-if="checkoutMode === 'guest' && guestPhone && !guestPhoneValid" class="text-xs text-red-500">
+                {{ t('error.phone_invalid') }}
+              </p>
+              <p v-if="checkoutMode === 'guest' && guestEmail && !guestEmailValid" class="text-xs text-red-500">
+                {{ t('error.email_invalid') }}
+              </p>
             </div>
           </div>
 
-          <button
-            @click="handleSubmit"
-            :disabled="!canSubmit"
-            class="theme-btn-block-md theme-btn-primary font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {{ submitting ? t('checkout.submitting') : t('checkout.submitButton') }}
-          </button>
+          <div class="h-fit rounded-2xl border theme-panel p-6 lg:sticky lg:top-24">
+            <h2 class="mb-4 text-lg font-bold theme-text-primary">{{ t('checkout.submitTitle') }}</h2>
+            <div class="mb-4 rounded-lg border theme-surface-soft p-3 text-xs theme-text-muted">
+              {{ t('checkout.submitHint') }}
+            </div>
+
+            <div class="mb-4 space-y-3 text-sm theme-text-muted">
+              <div class="flex items-center justify-between">
+                <span>{{ t('cart.itemsCount') }}</span>
+                <span class="font-mono theme-text-primary">{{ totalItems }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>{{ t('checkout.previewOriginal') }}</span>
+                <span class="font-mono theme-text-primary">{{ formatPrice(previewOriginal, previewCurrency) }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>{{ t('checkout.previewCoupon') }}</span>
+                <span class="font-mono theme-text-primary">{{ formatPrice(previewCoupon, previewCurrency) }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>{{ t('checkout.previewPromotion') }}</span>
+                <span class="font-mono theme-text-primary">{{ formatPrice(previewPromotion, previewCurrency) }}</span>
+              </div>
+              <div v-if="Number(previewMemberDiscount) > 0" class="flex items-center justify-between">
+                <span>{{ t('checkout.previewMemberDiscount') }}</span>
+                <span class="font-mono text-amber-600 dark:text-amber-300">-{{ formatPrice(previewMemberDiscount, previewCurrency) }}</span>
+              </div>
+              <div class="flex items-center justify-between border-t theme-border pt-3 theme-text-primary">
+                <span class="font-semibold">{{ t('checkout.previewTotal') }}</span>
+                <span class="font-mono text-lg font-bold">{{ formatPrice(previewTotal, previewCurrency) }}</span>
+              </div>
+            </div>
+
+            <div v-if="previewLoading || couponRefreshing" class="mb-3 text-xs theme-text-muted">
+              {{ previewStatusText }}
+            </div>
+            <div
+              v-if="checkoutAlert"
+              class="mb-4 rounded-lg border p-3 text-sm"
+              :class="pageAlertClass(checkoutAlert.level)"
+            >
+              {{ checkoutAlert.message }}
+            </div>
+
+            <div class="mb-4 border-t theme-border pt-4">
+              <h3 class="mb-3 text-sm font-bold theme-text-primary">{{ t('checkout.paymentMethod') }}</h3>
+
+              <div v-if="showBalanceOption" class="mb-3 rounded-lg border theme-surface-soft p-3">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-xs theme-text-muted">{{ t('payment.walletBalanceLabel') }}</div>
+                    <div class="mt-0.5 text-sm font-semibold theme-text-primary">
+                      {{ walletLoading ? t('common.loading') : formatPrice(walletBalance, previewCurrency) }}
+                    </div>
+                  </div>
+                  <label class="inline-flex items-center gap-2 text-xs theme-text-secondary">
+                    <input v-model="useBalance" type="checkbox" class="h-4 w-4 accent-primary" :disabled="walletOnlyPayment" />
+                    <span>{{ t('payment.useBalance') }}</span>
+                  </label>
+                </div>
+                <div v-if="walletOnlyPayment" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                  {{ t('payment.walletOnlyHint') }}
+                </div>
+                <div v-if="useBalance" class="mt-2 space-y-1 text-xs theme-text-muted">
+                  <div>{{ t('payment.walletDeductLabel') }}：{{ expectedWalletPaidDisplay }}</div>
+                  <div v-if="!walletOnlyPayment">{{ t('payment.onlinePayLabel') }}：{{ expectedOnlinePayDisplay }}</div>
+                  <div v-if="walletOnlyPayment && expectedOnlinePayCents > 0" class="text-amber-600 dark:text-amber-400">
+                    {{ t('payment.walletInsufficientHint') }}
+                  </div>
+                </div>
+              </div>
+
+              <template v-if="!walletOnlyPayment">
+                <div v-if="requiresOnlineChannel && paymentChannels.length > 0" class="grid grid-cols-2 gap-2">
+                  <button v-for="channel in paymentChannels" :key="channel.id"
+                    type="button"
+                    :disabled="isChannelDisabledForAmount(channel)"
+                    :title="isChannelDisabledForAmount(channel) ? channelAmountLimitHint(channel) : ''"
+                    @click="handleSelectChannel(channel)"
+                    class="text-left border rounded-lg p-2.5 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                    :class="selectedChannelId === channel.id && !isChannelDisabledForAmount(channel) ? 'theme-selected-surface' : 'theme-interactive-surface'">
+                    <div class="flex items-center gap-2">
+                      <img v-if="channel.icon" :src="getImageUrl(channel.icon)" loading="lazy" class="h-5 w-5 rounded object-contain shrink-0" />
+                      <div class="text-sm theme-text-primary font-medium truncate">{{ channel.name }}</div>
+                    </div>
+                    <div class="mt-1 space-y-0.5 text-xs theme-text-muted">
+                      <div>{{ t('payment.feeLabel') }}：{{ formatChannelFeeRate(channel) }}</div>
+                      <div>{{ t('payment.fixedFeeLabel') }}：{{ formatChannelFixedFee(channel) }}</div>
+                    </div>
+                    <div v-if="isChannelDisabledForAmount(channel)" class="mt-1 text-xs text-amber-600">
+                      {{ channelAmountLimitHint(channel) }}
+                    </div>
+                  </button>
+                </div>
+                <div v-else-if="requiresOnlineChannel && paymentChannels.length === 0" class="text-xs theme-text-muted">
+                  {{ t('checkout.noPaymentChannels') }}
+                </div>
+              </template>
+              <div v-if="!requiresOnlineChannel" class="text-xs text-emerald-600 dark:text-emerald-400">
+                {{ t('checkout.walletCoversAll') }}
+              </div>
+            </div>
+
+            <button
+              @click="handleSubmit"
+              :disabled="!canSubmit"
+              class="theme-btn-block-md theme-btn-primary font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {{ submitting ? t('checkout.submitting') : t('checkout.submitButton') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -381,7 +653,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useCartStore, type CartItem } from '../stores/cart'
@@ -399,7 +671,9 @@ import { getAffiliateCode, getAffiliateVisitorKey } from '../utils/affiliate'
 import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
 import CheckoutManualForm from '../components/checkout/CheckoutManualForm.vue'
+import MobileCheckoutFlow from '../components/checkout/mobile/MobileCheckoutFlow.vue'
 import RegionSelector from '../components/checkout/RegionSelector.vue'
+import { buildMobileCheckoutFlow, resolveExpandedMobileSection, type MobileCheckoutSectionKey } from '../composables/useMobileCheckoutFlow'
 import { useLocalized } from '../composables/useProduct'
 import type { ShippingAddressFormValue } from '../types/address'
 
@@ -982,6 +1256,16 @@ const guestCaptchaEnabled = computed(() => {
   return !!captchaConfig.value?.scenes?.guest_create_order && captchaProvider.value !== 'none'
 })
 const guestTurnstileSiteKey = computed(() => String(captchaConfig.value?.turnstile?.site_key || ''))
+const guestCaptchaComplete = computed(() => {
+  if (!guestCaptchaEnabled.value) return true
+  if (captchaProvider.value === 'image') {
+    return Boolean(guestCaptchaPayload.value.captcha_id && guestCaptchaPayload.value.captcha_code)
+  }
+  if (captchaProvider.value === 'turnstile') {
+    return Boolean(guestTurnstileToken.value)
+  }
+  return false
+})
 
 const getGuestCaptchaPayload = (): CaptchaPayload | undefined => {
   if (!guestCaptchaEnabled.value) return undefined
@@ -1018,14 +1302,7 @@ const canSubmit = computed(() => {
   if (userAuthStore.isAuthenticated) return true
   if (checkoutMode.value !== 'guest') return false
   if (!guestPhone.value.trim() || !guestPassword.value.trim() || !guestPhoneValid.value || !guestEmailValid.value) return false
-  if (!guestCaptchaEnabled.value) return true
-  if (captchaProvider.value === 'image') {
-    return Boolean(guestCaptchaPayload.value.captcha_id && guestCaptchaPayload.value.captcha_code)
-  }
-  if (captchaProvider.value === 'turnstile') {
-    return Boolean(guestTurnstileToken.value)
-  }
-  return false
+  return guestCaptchaComplete.value
 })
 
 const submitBlockedReason = computed(() => {
@@ -1049,13 +1326,8 @@ const submitBlockedReason = computed(() => {
   if (!guestPhone.value.trim() || !guestPassword.value.trim()) return t('checkout.errors.missingGuest')
   if (!guestPhoneValid.value) return t('error.phone_invalid')
   if (!guestEmailValid.value) return t('error.email_invalid')
-  if (guestCaptchaEnabled.value) {
-    if (captchaProvider.value === 'image' && (!guestCaptchaPayload.value.captcha_id || !guestCaptchaPayload.value.captcha_code)) {
-      return t('auth.common.captchaRequired')
-    }
-    if (captchaProvider.value === 'turnstile' && !guestTurnstileToken.value) {
-      return t('auth.common.captchaRequired')
-    }
+  if (!guestCaptchaComplete.value) {
+    return t('auth.common.captchaRequired')
   }
   return ''
 })
@@ -1076,6 +1348,203 @@ const checkoutAlert = computed<PageAlert | null>(() => {
   }
   return null
 })
+
+const mobileExpandedSection = ref<MobileCheckoutSectionKey | null>(null)
+
+const maskPhone = (value: string) => {
+  const trimmed = value.trim()
+  if (trimmed.length < 7) return trimmed
+  return `${trimmed.slice(0, 3)}****${trimmed.slice(-4)}`
+}
+
+const mobileShippingComplete = computed(() => {
+  if (!orderRequiresShippingAddress.value) return true
+  return shippingAddressValidation.value.valid
+})
+
+const mobileBuyerComplete = computed(() => {
+  if (!manualFormValidation.value.valid) return false
+  if (userAuthStore.isAuthenticated) return true
+  if (checkoutMode.value !== 'guest') return false
+  if (!guestPhone.value.trim() || !guestPassword.value.trim()) return false
+  if (!guestPhoneValid.value || !guestEmailValid.value) return false
+  return guestCaptchaComplete.value
+})
+
+const mobilePaymentComplete = computed(() => {
+  if (walletOnlyPayment.value) return expectedOnlinePayCents.value <= 0
+  if (!requiresOnlineChannel.value) return true
+  return Boolean(selectedChannelId.value) && !selectedChannelAmountHint.value
+})
+
+const mobileFlowState = computed(() => buildMobileCheckoutFlow({
+  hasShippingSection: orderRequiresShippingAddress.value,
+  shippingComplete: mobileShippingComplete.value,
+  buyerComplete: mobileBuyerComplete.value,
+  paymentComplete: mobilePaymentComplete.value,
+}))
+
+const mobileStatusText = computed(() => {
+  if (error.value) return error.value
+  if (previewError.value) return previewError.value
+  if (previewLoading.value || couponRefreshing.value) return previewStatusText.value
+
+  const action = mobileFlowState.value.primaryActionKey
+  if (action === 'saveShipping') return t('checkout.mobile.shippingMissing')
+  if (action === 'continueBuyer') return t('checkout.mobile.buyerMissing')
+  if (action === 'choosePayment') return t('checkout.mobile.paymentMissing')
+  return t('checkout.mobile.readyToSubmit')
+})
+
+const mobilePrimaryActionLabel = computed(() => {
+  const action = mobileFlowState.value.primaryActionKey
+  if (action === 'saveShipping') return t('checkout.mobile.actionSaveShipping')
+  if (action === 'continueBuyer') return t('checkout.mobile.actionContinueBuyer')
+  if (action === 'choosePayment') return t('checkout.mobile.actionChoosePayment')
+  return t('checkout.mobile.actionSubmit')
+})
+
+const mobileTotalText = computed(() => formatPrice(previewTotal.value, previewCurrency.value))
+
+const mobileDisplaySections = computed(() => {
+  const state = mobileFlowState.value
+  const titleMap: Record<MobileCheckoutSectionKey, string> = {
+    items: t('checkout.mobile.sectionItems'),
+    shipping: t('checkout.mobile.sectionShipping'),
+    buyer: t('checkout.mobile.sectionBuyer'),
+    coupon: t('checkout.mobile.sectionCoupon'),
+    payment: t('checkout.mobile.sectionPayment'),
+  }
+
+  const shippingRegionLine = [
+    shippingAddress.value.province,
+    shippingAddress.value.city,
+    shippingAddress.value.district,
+    shippingAddress.value.township,
+    shippingAddress.value.detail_address,
+  ]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean)
+    .join(' ')
+
+  const shippingSummaryLines = [
+    shippingAddress.value.receiver_name && shippingAddress.value.receiver_phone
+      ? `${shippingAddress.value.receiver_name} · ${maskPhone(shippingAddress.value.receiver_phone)}`
+      : '',
+    shippingRegionLine,
+  ].filter(Boolean)
+
+  const buyerSummaryLines = [
+    userAuthStore.isAuthenticated
+      ? t('checkout.mobile.buyerLoggedIn')
+      : checkoutMode.value === 'guest' && guestPhone.value.trim()
+        ? t('checkout.mobile.buyerGuest', { phone: maskPhone(guestPhone.value) })
+        : t('checkout.mobile.buyerMissing'),
+    manualFormProducts.value.length > 0 && !manualFormValidation.value.valid
+      ? t('checkout.mobile.buyerManualPending')
+      : '',
+  ].filter(Boolean)
+
+  const couponDiscountCents = amountToCents(previewCoupon.value)
+  const couponSummaryLines = normalizedCouponCode.value
+    ? [
+        normalizedCouponCode.value,
+        couponDiscountCents !== null && couponDiscountCents > 0
+          ? t('checkout.mobile.summaryCouponApplied', {
+            amount: formatPrice(previewCoupon.value, previewCurrency.value),
+          })
+          : '',
+      ].filter(Boolean)
+    : [t('checkout.mobile.summaryCouponEmpty')]
+
+  const selectedChannel = paymentChannels.value.find((channel: any) => Number(channel?.id) === Number(selectedChannelId.value))
+  const paymentSummaryLines = [
+    useBalance.value && expectedWalletPaidCents.value > 0
+      ? `${t('payment.walletDeductLabel')} ${expectedWalletPaidDisplay.value}`
+      : '',
+    !requiresOnlineChannel.value
+      ? t('checkout.walletCoversAll')
+      : selectedChannel?.name || t('checkout.mobile.paymentMissing'),
+  ].filter(Boolean)
+
+  const summaryMap: Record<MobileCheckoutSectionKey, string[]> = {
+    items: [
+      t('checkout.mobile.summaryItems', { count: totalItems.value }),
+      `${t('checkout.previewTotal')} ${formatPrice(previewTotal.value, previewCurrency.value)}`,
+    ],
+    shipping: shippingSummaryLines.length > 0 ? shippingSummaryLines : [t('checkout.mobile.shippingMissing')],
+    buyer: buyerSummaryLines,
+    coupon: couponSummaryLines,
+    payment: paymentSummaryLines,
+  }
+
+  return state.visibleSectionKeys.map((key) => {
+    const complete = state.completedSectionKeys.includes(key)
+    const recommended = state.recommendedSectionKey === key
+
+    return {
+      key,
+      title: titleMap[key],
+      badge: complete
+        ? t('checkout.mobile.complete')
+        : recommended
+          ? t('checkout.mobile.current')
+          : key === 'coupon'
+            ? t('checkout.mobile.optional')
+            : t('checkout.mobile.pending'),
+      summaryLines: summaryMap[key],
+      complete,
+      recommended,
+      softHint: !complete && !recommended
+        ? t('checkout.mobile.softGuide', { step: titleMap[state.recommendedSectionKey] })
+        : '',
+    }
+  })
+})
+
+const scrollMobileSectionIntoView = async (sectionKey: MobileCheckoutSectionKey) => {
+  await nextTick()
+  const section = document.querySelector(`[data-section-toggle="${sectionKey}"]`)
+  if (section instanceof HTMLElement) {
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+}
+
+watch(mobileFlowState, (state) => {
+  mobileExpandedSection.value = resolveExpandedMobileSection({
+    expandedSectionKey: mobileExpandedSection.value,
+    recommendedSectionKey: state.recommendedSectionKey,
+    completedSectionKeys: state.completedSectionKeys,
+    visibleSectionKeys: state.visibleSectionKeys,
+  })
+}, { immediate: true })
+
+const handleMobileSectionChange = (sectionKey: string) => {
+  mobileExpandedSection.value = sectionKey as MobileCheckoutSectionKey
+}
+
+const handleMobilePrimaryAction = async () => {
+  submitAttempted.value = true
+
+  const action = mobileFlowState.value.primaryActionKey
+  if (action === 'saveShipping') {
+    mobileExpandedSection.value = 'shipping'
+    await scrollMobileSectionIntoView('shipping')
+    return
+  }
+  if (action === 'continueBuyer') {
+    mobileExpandedSection.value = 'buyer'
+    await scrollMobileSectionIntoView('buyer')
+    return
+  }
+  if (action === 'choosePayment') {
+    mobileExpandedSection.value = 'payment'
+    await scrollMobileSectionIntoView('payment')
+    return
+  }
+
+  await handleSubmit()
+}
 
 const buildItemsPayload = () => cartItems.value.map(item => ({
   product_id: item.productId,
