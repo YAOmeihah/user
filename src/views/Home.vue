@@ -155,6 +155,7 @@
                 <PaginationNav
                   :current-page="listCurrentPage"
                   :total-pages="listTotalPages"
+                  :loading="listLoading"
                   compact
                   @change-page="listChangePage"
                 />
