@@ -673,7 +673,14 @@ import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
 import CheckoutManualForm from '../components/checkout/CheckoutManualForm.vue'
 import MobileCheckoutFlow from '../components/checkout/mobile/MobileCheckoutFlow.vue'
 import RegionSelector from '../components/checkout/RegionSelector.vue'
-import { buildMobileCheckoutFlow, resolveExpandedMobileSection, type MobileCheckoutSectionKey } from '../composables/useMobileCheckoutFlow'
+import {
+  buildMobileCheckoutFlow,
+  isMobileBuyerReady,
+  isMobileManualFormReady,
+  isMobileShippingReady,
+  resolveExpandedMobileSection,
+  type MobileCheckoutSectionKey,
+} from '../composables/useMobileCheckoutFlow'
 import { useLocalized } from '../composables/useProduct'
 import type { ShippingAddressFormValue } from '../types/address'
 
@@ -1357,18 +1364,37 @@ const maskPhone = (value: string) => {
   return `${trimmed.slice(0, 3)}****${trimmed.slice(-4)}`
 }
 
+const mobileManualFormsReady = computed(() => isMobileManualFormReady(
+  manualFormProducts.value,
+  manualFormData.value,
+))
+
+const mobileShippingReady = computed(() => isMobileShippingReady({
+  requiresShipping: orderRequiresShippingAddress.value,
+  receiverName: shippingAddress.value.receiver_name,
+  receiverPhone: shippingAddress.value.receiver_phone,
+  provinceCode: shippingAddress.value.province_code,
+  cityCode: shippingAddress.value.city_code,
+  districtCode: shippingAddress.value.district_code,
+  townshipCode: shippingAddress.value.township_code,
+  detailAddress: shippingAddress.value.detail_address,
+}))
+
 const mobileShippingComplete = computed(() => {
   if (!orderRequiresShippingAddress.value) return true
-  return shippingAddressValidation.value.valid
+  return mobileShippingReady.value
 })
 
 const mobileBuyerComplete = computed(() => {
-  if (!manualFormValidation.value.valid) return false
-  if (userAuthStore.isAuthenticated) return true
-  if (checkoutMode.value !== 'guest') return false
-  if (!guestPhone.value.trim() || !guestPassword.value.trim()) return false
-  if (!guestPhoneValid.value || !guestEmailValid.value) return false
-  return guestCaptchaComplete.value
+  return isMobileBuyerReady({
+    isAuthenticated: userAuthStore.isAuthenticated,
+    checkoutMode: checkoutMode.value,
+    manualFormsReady: mobileManualFormsReady.value,
+    guestPhone: guestPhone.value,
+    guestPassword: guestPassword.value,
+    guestEmail: guestEmail.value,
+    captchaComplete: guestCaptchaComplete.value,
+  })
 })
 
 const mobilePaymentComplete = computed(() => {
@@ -1440,7 +1466,7 @@ const mobileDisplaySections = computed(() => {
       : checkoutMode.value === 'guest' && guestPhone.value.trim()
         ? t('checkout.mobile.buyerGuest', { phone: maskPhone(guestPhone.value) })
         : t('checkout.mobile.buyerMissing'),
-    manualFormProducts.value.length > 0 && !manualFormValidation.value.valid
+    manualFormProducts.value.length > 0 && !mobileManualFormsReady.value
       ? t('checkout.mobile.buyerManualPending')
       : '',
   ].filter(Boolean)
@@ -1485,17 +1511,19 @@ const mobileDisplaySections = computed(() => {
     return {
       key,
       title: titleMap[key],
-      badge: complete
-        ? t('checkout.mobile.complete')
-        : recommended
-          ? t('checkout.mobile.current')
-          : key === 'coupon'
-            ? t('checkout.mobile.optional')
-            : t('checkout.mobile.pending'),
+      badge: key === 'items'
+        ? ''
+        : complete
+          ? t('checkout.mobile.complete')
+          : recommended
+            ? t('checkout.mobile.current')
+            : key === 'coupon'
+              ? t('checkout.mobile.optional')
+              : t('checkout.mobile.pending'),
       summaryLines: summaryMap[key],
       complete,
       recommended,
-      softHint: !complete && !recommended
+      softHint: key !== 'items' && !complete && !recommended
         ? t('checkout.mobile.softGuide', { step: titleMap[state.recommendedSectionKey] })
         : '',
     }

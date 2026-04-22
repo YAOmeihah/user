@@ -6,7 +6,7 @@ const sections = [
   {
     key: 'items',
     title: '商品摘要',
-    badge: '已完成',
+    badge: '',
     summaryLines: ['共 1 件商品', '应付 ¥2.00'],
     complete: true,
     recommended: false,
@@ -43,6 +43,8 @@ describe('MobileCheckoutFlow', () => {
     expect(wrapper.text()).toContain('共 1 件商品')
     expect(wrapper.find('[data-testid="items-slot"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="shipping-slot"]').exists()).toBe(true)
+    expect(wrapper.find('[data-section-badge="items"]').exists()).toBe(false)
+    expect(wrapper.get('[data-section-root="shipping"]').attributes('data-section-state')).toBe('current')
   })
 
   it('emits section changes and primary action clicks', async () => {

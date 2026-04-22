@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildMobileCheckoutFlow, resolveExpandedMobileSection } from '../useMobileCheckoutFlow'
+import {
+  buildMobileCheckoutFlow,
+  isMobileBuyerReady,
+  isMobileManualFormReady,
+  isMobileShippingReady,
+  resolveExpandedMobileSection,
+} from '../useMobileCheckoutFlow'
 
 describe('buildMobileCheckoutFlow', () => {
   it('starts on shipping when a shippable order has no address yet', () => {
@@ -62,5 +68,61 @@ describe('resolveExpandedMobileSection', () => {
     })
 
     expect(expanded).toBe('buyer')
+  })
+})
+
+describe('mobile section readiness', () => {
+  it('does not treat one-character shipping data as ready', () => {
+    const ready = isMobileShippingReady({
+      requiresShipping: true,
+      receiverName: 'A',
+      receiverPhone: '1',
+      provinceCode: '110000',
+      cityCode: '110100',
+      districtCode: '110101',
+      townshipCode: '110101001',
+      detailAddress: '1',
+    })
+
+    expect(ready).toBe(false)
+  })
+
+  it('does not treat one-character manual text fields as ready', () => {
+    const ready = isMobileManualFormReady(
+      [
+        {
+          itemKey: '1',
+          fields: [
+            {
+              key: 'qq',
+              type: 'text',
+              required: true,
+              options: [],
+            },
+          ],
+        },
+      ],
+      {
+        '1': {
+          qq: 'a',
+        },
+      },
+    )
+
+    expect(ready).toBe(false)
+  })
+
+  it('requires a meaningful guest password before buyer info is ready', () => {
+    const ready = isMobileBuyerReady({
+      isAuthenticated: false,
+      checkoutMode: 'guest',
+      manualFormsReady: true,
+      guestPhone: '13800138000',
+      guestPassword: '1',
+      guestEmail: '',
+      captchaComplete: true,
+    })
+
+    expect(ready).toBe(false)
   })
 })
