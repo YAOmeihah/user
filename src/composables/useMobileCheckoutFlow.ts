@@ -66,6 +66,47 @@ export interface MobileStepDirtyInput {
   confirmedFingerprint?: string | null
 }
 
+export interface MobileSectionScrollTopInput {
+  currentScrollY: number
+  elementTop: number
+  fixedOffset: number
+  gap?: number
+}
+
+export interface MobileBuyerErrorMessageInput {
+  manualFormsValid: boolean
+  manualFormFirstError: string
+  isAuthenticated: boolean
+  checkoutMode: 'guest' | 'member'
+  guestPhone: string
+  guestPassword: string
+  guestPhoneValid: boolean
+  guestEmailValid: boolean
+  guestCaptchaComplete: boolean
+  loginOrGuestMessage: string
+  missingGuestMessage: string
+  invalidPhoneMessage: string
+  invalidEmailMessage: string
+  captchaRequiredMessage: string
+  fallbackMessage: string
+}
+
+export interface MobilePaymentErrorMessageInput {
+  walletOnlyPayment: boolean
+  expectedOnlinePayCents: number
+  requiresOnlineChannel: boolean
+  selectedChannelId: number | string | null | undefined
+  selectedChannelAmountHint: string
+  walletInsufficientMessage: string
+  selectPaymentMessage: string
+  fallbackMessage: string
+}
+
+export interface MobileErrorTargetSelectorsInput {
+  sectionKey: MobileCheckoutSectionKey
+  focusSelector: string
+}
+
 const phonePattern = /^\+?[0-9\-()\s]{6,20}$/
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const meaningfulTextTypes = new Set(['text', 'textarea'])
@@ -176,6 +217,72 @@ export const isMobileStepDirty = ({
 
   return currentFingerprint !== lastConfirmedFingerprint
 }
+
+export const getMobileSectionScrollTop = ({
+  currentScrollY,
+  elementTop,
+  fixedOffset,
+  gap = 16,
+}: MobileSectionScrollTopInput) =>
+  Math.max(currentScrollY + elementTop - fixedOffset - gap, 0)
+
+export const resolveMobileBuyerErrorMessage = ({
+  manualFormsValid,
+  manualFormFirstError,
+  isAuthenticated,
+  checkoutMode,
+  guestPhone,
+  guestPassword,
+  guestPhoneValid,
+  guestEmailValid,
+  guestCaptchaComplete,
+  loginOrGuestMessage,
+  missingGuestMessage,
+  invalidPhoneMessage,
+  invalidEmailMessage,
+  captchaRequiredMessage,
+  fallbackMessage,
+}: MobileBuyerErrorMessageInput) => {
+  if (!manualFormsValid) {
+    return manualFormFirstError || fallbackMessage
+  }
+  if (isAuthenticated) return ''
+  if (checkoutMode !== 'guest') return loginOrGuestMessage
+  if (!guestPhone.trim() || !guestPassword.trim()) return missingGuestMessage
+  if (!guestPhoneValid) return invalidPhoneMessage
+  if (!guestEmailValid) return invalidEmailMessage
+  if (!guestCaptchaComplete) return captchaRequiredMessage
+  return fallbackMessage
+}
+
+export const resolveMobilePaymentErrorMessage = ({
+  walletOnlyPayment,
+  expectedOnlinePayCents,
+  requiresOnlineChannel,
+  selectedChannelId,
+  selectedChannelAmountHint,
+  walletInsufficientMessage,
+  selectPaymentMessage,
+  fallbackMessage,
+}: MobilePaymentErrorMessageInput) => {
+  if (walletOnlyPayment && expectedOnlinePayCents > 0) {
+    return walletInsufficientMessage
+  }
+  if (!requiresOnlineChannel) return ''
+  if (selectedChannelAmountHint) return selectedChannelAmountHint
+  if (!selectedChannelId) return selectPaymentMessage
+  return fallbackMessage
+}
+
+export const resolveMobileErrorTargetSelectors = ({
+  sectionKey,
+  focusSelector,
+}: MobileErrorTargetSelectorsInput) => ({
+  scrollSelector: focusSelector
+    ? `[data-section-error="${sectionKey}"], ${focusSelector}`
+    : `[data-section-error="${sectionKey}"], [data-section-toggle="${sectionKey}"]`,
+  focusSelector,
+})
 
 const sectionIsComplete = (
   sectionKey: MobileCheckoutSectionKey,

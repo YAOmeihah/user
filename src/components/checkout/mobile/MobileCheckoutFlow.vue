@@ -23,7 +23,7 @@
         :data-section-toggle="section.key"
         type="button"
         class="flex w-full items-start justify-between gap-3 px-4 py-4 text-left transition-colors duration-200"
-        @click="$emit('update:expandedSection', section.key)"
+        @click="$emit('update:expandedSection', expandedSection === section.key ? null : section.key)"
       >
         <div class="min-w-0">
           <div class="flex items-center gap-2">
@@ -50,7 +50,7 @@
           </p>
         </div>
         <span class="text-xs font-semibold theme-text-accent">
-          {{ expandedSection === section.key ? collapseLabel : editLabel }}
+          {{ expandedSection === section.key ? collapseLabel : section.collapsedActionLabel || editLabel }}
         </span>
       </button>
 
@@ -59,6 +59,13 @@
           v-if="expandedSection === section.key"
           class="border-t theme-border px-4 py-4"
         >
+          <p
+            v-if="section.errorMessage"
+            :data-section-error="section.key"
+            class="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+          >
+            {{ section.errorMessage }}
+          </p>
           <slot :name="`section-${section.key}`" />
         </div>
       </Transition>
@@ -82,6 +89,8 @@ export interface MobileCheckoutDisplaySection {
   title: string
   badge: string
   summaryLines: string[]
+  errorMessage: string
+  collapsedActionLabel?: string
   complete: boolean
   recommended: boolean
   softHint: string
@@ -107,7 +116,7 @@ withDefaults(
 )
 
 defineEmits<{
-  (e: 'update:expandedSection', value: string): void
+  (e: 'update:expandedSection', value: string | null): void
   (e: 'primaryAction'): void
 }>()
 </script>

@@ -112,6 +112,7 @@
             <div v-if="orderRequiresShippingAddress" class="space-y-3">
               <input
                 v-model="shippingAddress.receiver_name"
+                data-mobile-shipping-input="receiver-name"
                 type="text"
                 autocomplete="name"
                 class="w-full form-input-lg"
@@ -119,6 +120,7 @@
               />
               <input
                 v-model="shippingAddress.receiver_phone"
+                data-mobile-shipping-input="receiver-phone"
                 type="tel"
                 autocomplete="tel"
                 class="w-full form-input-lg"
@@ -126,18 +128,17 @@
               />
               <RegionSelector
                 v-model="shippingAddress"
+                data-mobile-shipping-input="region"
                 :invalid="submitAttempted && shippingRegionMissing"
               />
               <textarea
                 v-model="shippingAddress.detail_address"
+                data-mobile-shipping-input="detail-address"
                 rows="3"
                 autocomplete="street-address"
                 class="w-full form-input-lg"
                 :placeholder="t('checkout.shippingDetailAddress')"
               />
-              <p v-if="submitAttempted && !shippingAddressValidation.valid" class="text-sm text-red-500">
-                {{ shippingAddressValidation.message }}
-              </p>
             </div>
           </template>
 
@@ -155,7 +156,7 @@
               />
 
               <template v-if="!userAuthStore.isAuthenticated">
-                <div class="flex flex-wrap gap-3">
+                <div data-mobile-buyer-input="checkout-mode" class="flex flex-wrap gap-3">
                   <button
                     @click="checkoutMode = 'guest'"
                     class="theme-btn-inline-md"
@@ -173,6 +174,7 @@
                 <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-3">
                   <input
                     :value="guestPhone"
+                    data-mobile-buyer-input="guest-phone"
                     type="tel"
                     class="w-full form-input-lg"
                     :placeholder="t('checkout.guestPhonePlaceholder')"
@@ -180,19 +182,25 @@
                   />
                   <input
                     v-model="guestPassword"
+                    data-mobile-buyer-input="guest-password"
                     type="password"
                     class="w-full form-input-lg"
                     :placeholder="t('checkout.guestPasswordPlaceholder')"
                   />
                   <input
                     v-model="guestEmail"
+                    data-mobile-buyer-input="guest-email"
                     type="email"
                     class="w-full form-input-lg"
                     :placeholder="t('checkout.guestEmailPlaceholder')"
                   />
                 </div>
 
-                <div v-if="checkoutMode === 'guest' && guestCaptchaEnabled" class="space-y-2">
+                <div
+                  v-if="checkoutMode === 'guest' && guestCaptchaEnabled"
+                  data-mobile-buyer-input="guest-captcha"
+                  class="space-y-2"
+                >
                   <p class="text-xs font-semibold uppercase tracking-[0.14em] theme-text-muted">{{ t('auth.common.captchaLabel') }}</p>
                   <ImageCaptcha
                     v-if="captchaProvider === 'image'"
@@ -274,7 +282,11 @@
               </div>
 
               <template v-if="!walletOnlyPayment">
-                <div v-if="requiresOnlineChannel && paymentChannels.length > 0" class="space-y-2">
+                <div
+                  v-if="requiresOnlineChannel && paymentChannels.length > 0"
+                  data-mobile-payment-input="channel-list"
+                  class="space-y-2"
+                >
                   <button
                     v-for="channel in paymentChannels"
                     :key="channel.id"
@@ -675,11 +687,15 @@ import MobileCheckoutFlow from '../components/checkout/mobile/MobileCheckoutFlow
 import RegionSelector from '../components/checkout/RegionSelector.vue'
 import {
   buildMobileCheckoutFlow,
+  getMobileSectionScrollTop,
   isMobileBuyerReady,
   isMobileManualFormReady,
   isMobileStepConfirmed,
   isMobileStepDirty,
   isMobileShippingReady,
+  resolveMobileBuyerErrorMessage,
+  resolveMobileErrorTargetSelectors,
+  resolveMobilePaymentErrorMessage,
   resolveExpandedMobileSection,
   type MobileCheckoutSectionKey,
 } from '../composables/useMobileCheckoutFlow'
@@ -1359,6 +1375,7 @@ const checkoutAlert = computed<PageAlert | null>(() => {
 })
 
 const mobileExpandedSection = ref<MobileCheckoutSectionKey | null>(null)
+const MOBILE_CHECKOUT_SECTION_TRANSITION_MS = 220
 type MobileConfirmableSectionKey = 'shipping' | 'buyer' | 'payment'
 const mobileConfirmedFingerprints = ref<Partial<Record<MobileConfirmableSectionKey, string>>>({})
 
@@ -1471,10 +1488,67 @@ const mobileFlowState = computed(() => buildMobileCheckoutFlow({
   paymentComplete: mobilePaymentComplete.value,
 }))
 
+const mobileShippingErrorMessage = computed(() => {
+  if (!submitAttempted.value) return ''
+  if (mobileFlowState.value.recommendedSectionKey !== 'shipping') return ''
+  if (mobileShippingReady.value) return ''
+  return shippingAddressValidation.value.message || t('checkout.mobile.shippingMissing')
+})
+
+const mobileBuyerErrorMessage = computed(() => {
+  if (!submitAttempted.value) return ''
+  if (mobileFlowState.value.recommendedSectionKey !== 'buyer') return ''
+  if (mobileBuyerReady.value) return ''
+
+  return resolveMobileBuyerErrorMessage({
+    manualFormsValid: manualFormValidation.value.valid,
+    manualFormFirstError: manualFormValidation.value.firstError,
+    isAuthenticated: userAuthStore.isAuthenticated,
+    checkoutMode: checkoutMode.value,
+    guestPhone: guestPhone.value,
+    guestPassword: guestPassword.value,
+    guestPhoneValid: guestPhoneValid.value,
+    guestEmailValid: guestEmailValid.value,
+    guestCaptchaComplete: guestCaptchaComplete.value,
+    loginOrGuestMessage: t('checkout.errors.loginOrGuest'),
+    missingGuestMessage: t('checkout.errors.missingGuest'),
+    invalidPhoneMessage: t('error.phone_invalid'),
+    invalidEmailMessage: t('error.email_invalid'),
+    captchaRequiredMessage: t('auth.common.captchaRequired'),
+    fallbackMessage: t('checkout.mobile.buyerMissing'),
+  })
+})
+
+const mobilePaymentErrorMessage = computed(() => {
+  if (!submitAttempted.value) return ''
+  if (mobileFlowState.value.recommendedSectionKey !== 'payment') return ''
+  if (mobilePaymentReady.value) return ''
+
+  return resolveMobilePaymentErrorMessage({
+    walletOnlyPayment: walletOnlyPayment.value,
+    expectedOnlinePayCents: expectedOnlinePayCents.value,
+    requiresOnlineChannel: requiresOnlineChannel.value,
+    selectedChannelId: selectedChannelId.value,
+    selectedChannelAmountHint: selectedChannelAmountHint.value,
+    walletInsufficientMessage: t('payment.walletInsufficientHint'),
+    selectPaymentMessage: t('checkout.errors.selectPayment'),
+    fallbackMessage: t('checkout.mobile.paymentMissing'),
+  })
+})
+
+const mobileCurrentSectionErrorMessage = computed(() => {
+  const action = mobileFlowState.value.primaryActionKey
+  if (action === 'saveShipping') return mobileShippingErrorMessage.value
+  if (action === 'continueBuyer') return mobileBuyerErrorMessage.value
+  if (action === 'choosePayment') return mobilePaymentErrorMessage.value
+  return ''
+})
+
 const mobileStatusText = computed(() => {
   if (error.value) return error.value
   if (previewError.value) return previewError.value
   if (previewLoading.value || couponRefreshing.value) return previewStatusText.value
+  if (mobileCurrentSectionErrorMessage.value) return mobileCurrentSectionErrorMessage.value
 
   const action = mobileFlowState.value.primaryActionKey
   if (action === 'saveShipping') {
@@ -1582,6 +1656,14 @@ const mobileDisplaySections = computed(() => {
     payment: mobilePaymentDirty.value,
   }
 
+  const errorMap: Record<MobileCheckoutSectionKey, string> = {
+    items: '',
+    shipping: mobileShippingErrorMessage.value,
+    buyer: mobileBuyerErrorMessage.value,
+    coupon: '',
+    payment: mobilePaymentErrorMessage.value,
+  }
+
   return state.visibleSectionKeys.map((key) => {
     const complete = state.completedSectionKeys.includes(key)
     const recommended = state.recommendedSectionKey === key
@@ -1602,6 +1684,8 @@ const mobileDisplaySections = computed(() => {
               ? t('checkout.mobile.optional')
               : t('checkout.mobile.pending'),
       summaryLines: summaryMap[key],
+      errorMessage: errorMap[key],
+      collapsedActionLabel: key === 'items' ? t('checkout.mobile.viewDetails') : '',
       complete,
       recommended,
       softHint: key !== 'items' && !complete && !recommended
@@ -1612,11 +1696,100 @@ const mobileDisplaySections = computed(() => {
 })
 
 const scrollMobileSectionIntoView = async (sectionKey: MobileCheckoutSectionKey) => {
+  const waitForAnimationFrame = () => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve())
+  })
+
   await nextTick()
+  await waitForAnimationFrame()
+
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    if (!document.querySelector('.mobile-checkout-section-leave-active')) {
+      break
+    }
+
+    await waitForAnimationFrame()
+  }
+
   const section = document.querySelector(`[data-section-toggle="${sectionKey}"]`)
   if (section instanceof HTMLElement) {
-    section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const siteHeader = document.querySelector('[data-site-header]')
+    const fixedOffset = siteHeader instanceof HTMLElement ? siteHeader.getBoundingClientRect().height : 0
+    const top = getMobileSectionScrollTop({
+      currentScrollY: window.scrollY,
+      elementTop: section.getBoundingClientRect().top,
+      fixedOffset,
+      gap: 16,
+    })
+
+    window.scrollTo({ top, behavior: 'smooth' })
   }
+}
+
+const scrollMobileElementIntoView = async (selector: string, focusSelector = '') => {
+  await nextTick()
+  const target = document.querySelector(selector)
+  if (!(target instanceof HTMLElement)) return
+
+  const siteHeader = document.querySelector('[data-site-header]')
+  const fixedOffset = siteHeader instanceof HTMLElement ? siteHeader.getBoundingClientRect().height : 0
+  const top = getMobileSectionScrollTop({
+    currentScrollY: window.scrollY,
+    elementTop: target.getBoundingClientRect().top,
+    fixedOffset,
+    gap: 16,
+  })
+
+  window.scrollTo({ top, behavior: 'smooth' })
+
+  const explicitFocusTarget = focusSelector ? document.querySelector(focusSelector) : null
+  const focusTarget = explicitFocusTarget instanceof HTMLElement
+    ? explicitFocusTarget
+    : target.matches('input, textarea, select, button')
+      ? target
+      : target.querySelector<HTMLElement>('input, textarea, select, button, [tabindex]:not([tabindex="-1"])')
+
+  focusTarget?.focus?.({ preventScroll: true })
+}
+
+const getMobileShippingErrorSelector = () => {
+  if (!shippingAddress.value.receiver_name.trim()) return '[data-mobile-shipping-input="receiver-name"]'
+  if (!shippingAddress.value.receiver_phone.trim()) return '[data-mobile-shipping-input="receiver-phone"]'
+  if (shippingRegionMissing.value) return '[data-mobile-shipping-input="region"]'
+  if (!shippingAddress.value.detail_address.trim()) return '[data-mobile-shipping-input="detail-address"]'
+  return '[data-section-toggle="shipping"]'
+}
+
+const getMobileBuyerErrorSelector = () => {
+  const firstManualFieldErrorKey = Object.keys(manualFormValidation.value.errors)[0]
+  if (firstManualFieldErrorKey) return `[data-manual-field-input="${firstManualFieldErrorKey}"]`
+  if (!userAuthStore.isAuthenticated && checkoutMode.value !== 'guest') return '[data-mobile-buyer-input="checkout-mode"]'
+  if (!guestPhone.value.trim() || !guestPhoneValid.value) return '[data-mobile-buyer-input="guest-phone"]'
+  if (!guestPassword.value.trim()) return '[data-mobile-buyer-input="guest-password"]'
+  if (!guestEmailValid.value) return '[data-mobile-buyer-input="guest-email"]'
+  if (!guestCaptchaComplete.value) return '[data-mobile-buyer-input="guest-captcha"]'
+  return '[data-section-toggle="buyer"]'
+}
+
+const getMobilePaymentErrorSelector = () => {
+  if (requiresOnlineChannel.value) return '[data-mobile-payment-input="channel-list"], [data-section-toggle="payment"]'
+  return '[data-section-toggle="payment"]'
+}
+
+const focusMobileErrorTarget = async (sectionKey: MobileCheckoutSectionKey) => {
+  const selectorMap: Partial<Record<MobileCheckoutSectionKey, string>> = {
+    shipping: getMobileShippingErrorSelector(),
+    buyer: getMobileBuyerErrorSelector(),
+    payment: getMobilePaymentErrorSelector(),
+  }
+
+  const focusSelector = selectorMap[sectionKey] || ''
+  const selectors = resolveMobileErrorTargetSelectors({
+    sectionKey,
+    focusSelector,
+  })
+
+  await scrollMobileElementIntoView(selectors.scrollSelector, selectors.focusSelector)
 }
 
 const confirmMobileSection = (sectionKey: MobileConfirmableSectionKey, fingerprint: string) => {
@@ -1635,8 +1808,21 @@ watch(mobileFlowState, (state) => {
   })
 }, { immediate: true })
 
-const handleMobileSectionChange = (sectionKey: string) => {
-  mobileExpandedSection.value = sectionKey as MobileCheckoutSectionKey
+watch(mobileExpandedSection, async (sectionKey, previousSectionKey) => {
+  if (!sectionKey || sectionKey === previousSectionKey) return
+  if (sectionKey !== mobileFlowState.value.recommendedSectionKey) return
+
+  if (previousSectionKey) {
+    await new Promise<void>((resolve) => {
+      window.setTimeout(() => resolve(), MOBILE_CHECKOUT_SECTION_TRANSITION_MS + 40)
+    })
+  }
+
+  await scrollMobileSectionIntoView(sectionKey)
+})
+
+const handleMobileSectionChange = (sectionKey: string | null) => {
+  mobileExpandedSection.value = sectionKey as MobileCheckoutSectionKey | null
 }
 
 const handleMobilePrimaryAction = async () => {
@@ -1646,33 +1832,34 @@ const handleMobilePrimaryAction = async () => {
   if (action === 'saveShipping') {
     mobileExpandedSection.value = 'shipping'
     await scrollMobileSectionIntoView('shipping')
-    if (!mobileShippingReady.value) return
+    if (!mobileShippingReady.value) {
+      await focusMobileErrorTarget('shipping')
+      return
+    }
 
     confirmMobileSection('shipping', mobileShippingFingerprint.value)
     await nextTick()
-    if (mobileFlowState.value.recommendedSectionKey !== 'shipping') {
-      mobileExpandedSection.value = mobileFlowState.value.recommendedSectionKey
-      await scrollMobileSectionIntoView(mobileFlowState.value.recommendedSectionKey)
-    }
     return
   }
   if (action === 'continueBuyer') {
     mobileExpandedSection.value = 'buyer'
     await scrollMobileSectionIntoView('buyer')
-    if (!mobileBuyerReady.value) return
+    if (!mobileBuyerReady.value) {
+      await focusMobileErrorTarget('buyer')
+      return
+    }
 
     confirmMobileSection('buyer', mobileBuyerFingerprint.value)
     await nextTick()
-    if (mobileFlowState.value.recommendedSectionKey !== 'buyer') {
-      mobileExpandedSection.value = mobileFlowState.value.recommendedSectionKey
-      await scrollMobileSectionIntoView(mobileFlowState.value.recommendedSectionKey)
-    }
     return
   }
   if (action === 'choosePayment') {
     mobileExpandedSection.value = 'payment'
     await scrollMobileSectionIntoView('payment')
-    if (!mobilePaymentReady.value) return
+    if (!mobilePaymentReady.value) {
+      await focusMobileErrorTarget('payment')
+      return
+    }
 
     confirmMobileSection('payment', mobilePaymentFingerprint.value)
     await nextTick()

@@ -1,5 +1,6 @@
 <template>
   <div
+    data-mobile-floating-bar
     class="fixed inset-x-0 z-40 border-t theme-border theme-panel-strong shadow-2xl lg:hidden"
     style="bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));"
   >

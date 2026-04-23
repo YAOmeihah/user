@@ -1,5 +1,6 @@
 <template>
   <nav
+    data-site-header
     class="fixed top-0 left-0 right-0 z-50 theme-panel-soft border-b theme-border backdrop-blur-md transition-all"
     :class="scrolled ? 'py-2 shadow-lg' : 'py-4'"
     :style="{ transitionDuration: 'var(--ui-duration-normal)' }">

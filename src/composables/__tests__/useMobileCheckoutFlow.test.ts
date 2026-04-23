@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildMobileCheckoutFlow,
+  getMobileSectionScrollTop,
   isMobileBuyerReady,
   isMobileManualFormReady,
+  resolveMobileBuyerErrorMessage,
+  resolveMobileErrorTargetSelectors,
+  resolveMobilePaymentErrorMessage,
   isMobileStepConfirmed,
   isMobileStepDirty,
   isMobileShippingReady,
@@ -147,5 +151,90 @@ describe('mobile step confirmation', () => {
     })
 
     expect(dirty).toBe(true)
+  })
+})
+
+describe('mobile section scrolling', () => {
+  it('subtracts the fixed header height and breathing room from the target position', () => {
+    const top = getMobileSectionScrollTop({
+      currentScrollY: 320,
+      elementTop: 260,
+      fixedOffset: 77,
+      gap: 16,
+    })
+
+    expect(top).toBe(487)
+  })
+
+  it('clamps the scroll target to the top of the page', () => {
+    const top = getMobileSectionScrollTop({
+      currentScrollY: 0,
+      elementTop: 40,
+      fixedOffset: 77,
+      gap: 16,
+    })
+
+    expect(top).toBe(0)
+  })
+})
+
+describe('mobile section errors', () => {
+  it('returns a guest-info error when buyer confirmation is blocked by empty guest credentials', () => {
+    const error = resolveMobileBuyerErrorMessage({
+      manualFormsValid: true,
+      manualFormFirstError: '',
+      isAuthenticated: false,
+      checkoutMode: 'guest',
+      guestPhone: '',
+      guestPassword: '',
+      guestPhoneValid: true,
+      guestEmailValid: true,
+      guestCaptchaComplete: true,
+      loginOrGuestMessage: '请先登录或使用游客购买',
+      missingGuestMessage: '请输入手机号与订单密码',
+      invalidPhoneMessage: '手机号格式不正确',
+      invalidEmailMessage: '邮箱格式不正确',
+      captchaRequiredMessage: '请先完成验证码',
+      fallbackMessage: '请继续填写购买信息',
+    })
+
+    expect(error).toBe('请输入手机号与订单密码')
+  })
+
+  it('prefers the selected-channel amount hint over a generic payment error', () => {
+    const error = resolveMobilePaymentErrorMessage({
+      walletOnlyPayment: false,
+      expectedOnlinePayCents: 200,
+      requiresOnlineChannel: true,
+      selectedChannelId: 3,
+      selectedChannelAmountHint: '该支付方式不支持当前金额',
+      walletInsufficientMessage: '余额不足',
+      selectPaymentMessage: '请选择支付方式',
+      fallbackMessage: '请选择支付方式',
+    })
+
+    expect(error).toBe('该支付方式不支持当前金额')
+  })
+})
+
+describe('mobile error target selectors', () => {
+  it('scrolls to the section error banner while keeping focus on the first invalid input', () => {
+    const selectors = resolveMobileErrorTargetSelectors({
+      sectionKey: 'buyer',
+      focusSelector: '[data-mobile-buyer-input="guest-phone"]',
+    })
+
+    expect(selectors.scrollSelector).toBe('[data-section-error="buyer"], [data-mobile-buyer-input="guest-phone"]')
+    expect(selectors.focusSelector).toBe('[data-mobile-buyer-input="guest-phone"]')
+  })
+
+  it('falls back to the section toggle when no specific field target exists', () => {
+    const selectors = resolveMobileErrorTargetSelectors({
+      sectionKey: 'payment',
+      focusSelector: '',
+    })
+
+    expect(selectors.scrollSelector).toBe('[data-section-error="payment"], [data-section-toggle="payment"]')
+    expect(selectors.focusSelector).toBe('')
   })
 })

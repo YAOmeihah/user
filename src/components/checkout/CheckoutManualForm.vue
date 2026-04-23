@@ -22,7 +22,12 @@
       >
         <h3 class="mb-3 text-sm font-semibold theme-text-primary">{{ manualItemTitle(manualItem) }}</h3>
         <div :class="compact ? 'grid grid-cols-1 gap-3 md:grid-cols-2' : 'grid grid-cols-1 gap-4 md:grid-cols-2'">
-          <div v-for="field in manualItem.fields" :key="`${manualItem.itemKey}-${field.key}`" class="space-y-1.5">
+          <div
+            v-for="field in manualItem.fields"
+            :key="`${manualItem.itemKey}-${field.key}`"
+            :data-manual-field-input="manualFieldDomKey(manualItem.itemKey, field.key)"
+            class="space-y-1.5"
+          >
             <label class="text-xs font-semibold theme-text-secondary">
               {{ getManualFieldLabel(field) }}
               <span v-if="field.required" class="ml-1 text-red-500">*</span>
@@ -148,6 +153,8 @@ const manualItemTitle = (manualItem: ManualFormProduct) => {
 const getFieldValue = (itemKey: string, fieldKey: string) => {
   return props.modelValue[itemKey]?.[fieldKey] ?? ''
 }
+
+const manualFieldDomKey = (itemKey: string, fieldKey: string) => `${itemKey}:${fieldKey}`
 
 const updateFieldValue = (itemKey: string, fieldKey: string, value: any) => {
   const updated = { ...props.modelValue }
