@@ -3,6 +3,7 @@ import {
   GUEST_SHIPPING_ADDRESS_MAX_AGE_MS,
   GUEST_SHIPPING_ADDRESS_STORAGE_KEY,
   clearGuestShippingAddressRecall,
+  createGuestShippingAddressRecallRecord,
   loadGuestShippingAddressRecall,
   saveGuestShippingAddressRecall,
   shouldEnableGuestShippingAddressRecall,
@@ -61,6 +62,43 @@ describe('guest shipping address recall storage', () => {
       receiver_name: '张三',
       detail_address: '世纪大道 100 号',
     })
+  })
+
+  it('creates and persists a recent record from a confirmed shipping payload before order submission', () => {
+    const recentRecord = createGuestShippingAddressRecallRecord(
+      {
+        receiver_name: ' 李四 ',
+        receiver_phone: ' 13900139000 ',
+        province: ' 浙江省 ',
+        province_code: '330000',
+        city: ' 杭州市 ',
+        city_code: '330100',
+        district: ' 西湖区 ',
+        district_code: '330106',
+        township: ' 古荡街道 ',
+        township_code: '330106009',
+        detail_address: ' 文三路 90 号 ',
+      },
+      {
+        now: '2026-04-23T13:00:00.000Z',
+      },
+    )
+
+    expect(recentRecord).toEqual({
+      receiver_name: '李四',
+      receiver_phone: '13900139000',
+      province: '浙江省',
+      province_code: '330000',
+      city: '杭州市',
+      city_code: '330100',
+      district: '西湖区',
+      district_code: '330106',
+      township: '古荡街道',
+      township_code: '330106009',
+      detail_address: '文三路 90 号',
+      saved_at: '2026-04-23T13:00:00.000Z',
+    })
+    expect(loadGuestShippingAddressRecall()).toEqual(recentRecord)
   })
 
   it('clears the saved record', () => {

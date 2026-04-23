@@ -13,6 +13,8 @@ export interface GuestShippingAddressRecallRecord {
   saved_at: string
 }
 
+export type GuestShippingAddressRecallPayload = Omit<GuestShippingAddressRecallRecord, 'saved_at'>
+
 export interface GuestShippingRecallEligibilityInput {
   orderRequiresShippingAddress: boolean
   isAuthenticated: boolean
@@ -94,6 +96,25 @@ export const saveGuestShippingAddressRecall = (
     GUEST_SHIPPING_ADDRESS_STORAGE_KEY,
     JSON.stringify(normalizeRecord(record)),
   )
+}
+
+export const createGuestShippingAddressRecallRecord = (
+  payload: GuestShippingAddressRecallPayload,
+  options: {
+    storage?: Storage
+    now?: string | Date
+  } = {},
+) => {
+  const record: GuestShippingAddressRecallRecord = {
+    ...payload,
+    saved_at:
+      typeof options.now === 'string'
+        ? options.now
+        : (options.now ?? new Date()).toISOString(),
+  }
+
+  saveGuestShippingAddressRecall(record, options.storage)
+  return normalizeRecord(record)
 }
 
 export const clearGuestShippingAddressRecall = (storage: Storage = localStorage) => {
