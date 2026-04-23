@@ -1,26 +1,93 @@
 import { describe, expect, it } from 'vitest'
 import {
   GUEST_SHIPPING_ADDRESS_MAX_AGE_MS,
+  GUEST_SHIPPING_ADDRESS_STORAGE_KEY,
+  clearGuestShippingAddressRecall,
   loadGuestShippingAddressRecall,
+  saveGuestShippingAddressRecall,
+  shouldEnableGuestShippingAddressRecall,
+  type GuestShippingAddressRecallRecord,
 } from '../useGuestShippingAddressRecall'
 
-describe('loadGuestShippingAddressRecall', () => {
+const record: GuestShippingAddressRecallRecord = {
+  receiver_name: '张三',
+  receiver_phone: '13800138000',
+  province: '上海市',
+  province_code: '310000',
+  city: '上海市',
+  city_code: '310100',
+  district: '浦东新区',
+  district_code: '310115',
+  township: '花木街道',
+  township_code: '310115013',
+  detail_address: '世纪大道 100 号',
+  saved_at: new Date('2026-04-23T12:00:00.000Z').toISOString(),
+}
+
+describe('guest shipping address recall storage', () => {
+  it('loads a valid record from localStorage', () => {
+    localStorage.setItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY, JSON.stringify(record))
+
+    expect(loadGuestShippingAddressRecall()).toEqual(record)
+  })
+
   it('returns null when the saved record is older than 30 days', () => {
-    localStorage.setItem('guest_checkout_recent_shipping_address_v1', JSON.stringify({
-      receiver_name: '张三',
-      receiver_phone: '13800138000',
-      province: '上海市',
-      province_code: '310000',
-      city: '上海市',
-      city_code: '310100',
-      district: '浦东新区',
-      district_code: '310115',
-      township: '花木街道',
-      township_code: '310115013',
-      detail_address: '世纪大道 100 号',
+    localStorage.setItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY, JSON.stringify({
+      ...record,
       saved_at: new Date(Date.now() - GUEST_SHIPPING_ADDRESS_MAX_AGE_MS - 1000).toISOString(),
     }))
 
     expect(loadGuestShippingAddressRecall()).toBeNull()
+  })
+
+  it('returns null when required address fields are missing', () => {
+    localStorage.setItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY, JSON.stringify({
+      ...record,
+      township_code: '',
+    }))
+
+    expect(loadGuestShippingAddressRecall()).toBeNull()
+  })
+
+  it('writes a normalized record back to localStorage', () => {
+    saveGuestShippingAddressRecall({
+      ...record,
+      receiver_name: ' 张三 ',
+      detail_address: ' 世纪大道 100 号 ',
+    })
+
+    expect(loadGuestShippingAddressRecall()).toEqual({
+      ...record,
+      receiver_name: '张三',
+      detail_address: '世纪大道 100 号',
+    })
+  })
+
+  it('clears the saved record', () => {
+    localStorage.setItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY, JSON.stringify(record))
+    clearGuestShippingAddressRecall()
+    expect(localStorage.getItem(GUEST_SHIPPING_ADDRESS_STORAGE_KEY)).toBeNull()
+  })
+})
+
+describe('shouldEnableGuestShippingAddressRecall', () => {
+  it('only enables recall for guest checkout with shipping-required orders', () => {
+    expect(shouldEnableGuestShippingAddressRecall({
+      orderRequiresShippingAddress: true,
+      isAuthenticated: false,
+      checkoutMode: 'guest',
+    })).toBe(true)
+
+    expect(shouldEnableGuestShippingAddressRecall({
+      orderRequiresShippingAddress: false,
+      isAuthenticated: false,
+      checkoutMode: 'guest',
+    })).toBe(false)
+
+    expect(shouldEnableGuestShippingAddressRecall({
+      orderRequiresShippingAddress: true,
+      isAuthenticated: true,
+      checkoutMode: 'guest',
+    })).toBe(false)
   })
 })
