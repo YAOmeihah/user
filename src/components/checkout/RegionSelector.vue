@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-3">
+  <div v-bind="attrs" class="space-y-3">
     <button
       type="button"
       class="group w-full rounded-2xl border theme-surface-soft p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -255,7 +255,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useAttrs, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { addressAPI } from '../../api'
 import type { AddressDivisionOption, ShippingAddressFormValue } from '../../types/address'
@@ -263,6 +263,10 @@ import type { AddressDivisionOption, ShippingAddressFormValue } from '../../type
 type AddressLevel = 'province' | 'city' | 'district' | 'township'
 
 const municipalityProvinceCodes = new Set(['11', '12', '31', '50'])
+
+defineOptions({
+  inheritAttrs: false,
+})
 
 const props = defineProps<{
   modelValue: ShippingAddressFormValue
@@ -274,6 +278,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const attrs = useAttrs()
 
 const visible = ref(false)
 const isDesktop = ref(false)
