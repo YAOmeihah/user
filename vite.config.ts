@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { configDefaults } from 'vitest/config'
 
 const cfAsyncModuleScriptPlugin = () => ({
   name: 'cfasync-module-script',
@@ -20,6 +21,8 @@ export default defineConfig(({ mode }) => ({
     globals: true,
     css: true,
     setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    exclude: [...configDefaults.exclude, '.worktrees/**', 'scripts/test/**', '.github/scripts/test/**'],
   },
   build: {
     rollupOptions: {
