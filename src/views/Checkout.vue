@@ -187,58 +187,68 @@
                   </router-link>
                 </div>
 
-                <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-3">
-                  <input
-                    :value="guestPhone"
-                    data-mobile-buyer-input="guest-phone"
-                    type="tel"
-                    class="w-full form-input-lg"
-                    :placeholder="t('checkout.guestPhonePlaceholder')"
-                    @input="handleGuestPhoneInput"
-                  />
-                  <input
-                    v-model="guestPassword"
-                    data-mobile-buyer-input="guest-password"
-                    type="password"
-                    class="w-full form-input-lg"
-                    :placeholder="t('checkout.guestPasswordPlaceholder')"
-                  />
-                  <input
-                    v-model="guestEmail"
-                    data-mobile-buyer-input="guest-email"
-                    type="email"
-                    class="w-full form-input-lg"
-                    :placeholder="t('checkout.guestEmailPlaceholder')"
-                  />
-                </div>
-
-                <div
-                  v-if="checkoutMode === 'guest' && guestCaptchaEnabled"
-                  data-mobile-buyer-input="guest-captcha"
-                  class="space-y-2"
+                <form
+                  v-if="checkoutMode === 'guest'"
+                  class="space-y-3"
+                  novalidate
+                  @submit.prevent
                 >
-                  <p class="text-xs font-semibold uppercase tracking-[0.14em] theme-text-muted">{{ t('auth.common.captchaLabel') }}</p>
-                  <ImageCaptcha
-                    v-if="captchaProvider === 'image'"
-                    ref="guestImageCaptchaRef"
-                    v-model="guestCaptchaPayload"
-                    :disabled="submitting"
-                    @config-stale="handleGuestCaptchaConfigStale"
-                  />
-                  <TurnstileCaptcha
-                    v-else-if="captchaProvider === 'turnstile'"
-                    ref="guestTurnstileRef"
-                    v-model="guestTurnstileToken"
-                    :site-key="guestTurnstileSiteKey"
-                  />
-                </div>
+                  <div class="grid grid-cols-1 gap-3">
+                    <input
+                      :value="guestPhone"
+                      data-mobile-buyer-input="guest-phone"
+                      type="tel"
+                      autocomplete="tel"
+                      class="w-full form-input-lg"
+                      :placeholder="t('checkout.guestPhonePlaceholder')"
+                      @input="handleGuestPhoneInput"
+                    />
+                    <input
+                      v-model="guestPassword"
+                      data-mobile-buyer-input="guest-password"
+                      type="password"
+                      autocomplete="current-password"
+                      class="w-full form-input-lg"
+                      :placeholder="t('checkout.guestPasswordPlaceholder')"
+                    />
+                    <input
+                      v-model="guestEmail"
+                      data-mobile-buyer-input="guest-email"
+                      type="email"
+                      autocomplete="email"
+                      class="w-full form-input-lg"
+                      :placeholder="t('checkout.guestEmailPlaceholder')"
+                    />
+                  </div>
 
-                <div v-if="checkoutMode === 'guest'" class="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
-                  <p class="font-semibold">{{ t('checkout.guestInstructions.title') }}</p>
-                  <p v-if="orderRequiresShippingAddress" class="mt-2">{{ t('checkout.guestPhoneSyncHint') }}</p>
-                  <p class="mt-2">{{ t('checkout.guestInstructions.password') }}</p>
-                  <p class="mt-2">{{ t('checkout.guestInstructions.email') }}</p>
-                </div>
+                  <div
+                    v-if="guestCaptchaEnabled"
+                    data-mobile-buyer-input="guest-captcha"
+                    class="space-y-2"
+                  >
+                    <p class="text-xs font-semibold uppercase tracking-[0.14em] theme-text-muted">{{ t('auth.common.captchaLabel') }}</p>
+                    <ImageCaptcha
+                      v-if="captchaProvider === 'image'"
+                      ref="guestImageCaptchaRef"
+                      v-model="guestCaptchaPayload"
+                      :disabled="submitting"
+                      @config-stale="handleGuestCaptchaConfigStale"
+                    />
+                    <TurnstileCaptcha
+                      v-else-if="captchaProvider === 'turnstile'"
+                      ref="guestTurnstileRef"
+                      v-model="guestTurnstileToken"
+                      :site-key="guestTurnstileSiteKey"
+                    />
+                  </div>
+
+                  <div class="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+                    <p class="font-semibold">{{ t('checkout.guestInstructions.title') }}</p>
+                    <p v-if="orderRequiresShippingAddress" class="mt-2">{{ t('checkout.guestPhoneSyncHint') }}</p>
+                    <p class="mt-2">{{ t('checkout.guestInstructions.password') }}</p>
+                    <p class="mt-2">{{ t('checkout.guestInstructions.email') }}</p>
+                  </div>
+                </form>
 
                 <p v-if="checkoutMode === 'guest' && guestPhone && !guestPhoneValid" class="text-xs text-red-500">
                   {{ t('error.phone_invalid') }}
@@ -523,53 +533,63 @@
                 </router-link>
               </div>
 
-              <div v-if="checkoutMode === 'guest'" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <input
-                  :value="guestPhone"
-                  type="tel"
-                  class="w-full form-input-lg"
-                  :placeholder="t('checkout.guestPhonePlaceholder')"
-                  @input="handleGuestPhoneInput"
-                />
-                <input
-                  v-model="guestPassword"
-                  type="password"
-                  class="w-full form-input-lg"
-                  :placeholder="t('checkout.guestPasswordPlaceholder')"
-                />
-                <input
-                  v-model="guestEmail"
-                  type="email"
-                  class="w-full form-input-lg md:col-span-2"
-                  :placeholder="t('checkout.guestEmailPlaceholder')"
-                />
-              </div>
+              <form
+                v-if="checkoutMode === 'guest'"
+                class="space-y-4"
+                novalidate
+                @submit.prevent
+              >
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <input
+                    :value="guestPhone"
+                    type="tel"
+                    autocomplete="tel"
+                    class="w-full form-input-lg"
+                    :placeholder="t('checkout.guestPhonePlaceholder')"
+                    @input="handleGuestPhoneInput"
+                  />
+                  <input
+                    v-model="guestPassword"
+                    type="password"
+                    autocomplete="current-password"
+                    class="w-full form-input-lg"
+                    :placeholder="t('checkout.guestPasswordPlaceholder')"
+                  />
+                  <input
+                    v-model="guestEmail"
+                    type="email"
+                    autocomplete="email"
+                    class="w-full form-input-lg md:col-span-2"
+                    :placeholder="t('checkout.guestEmailPlaceholder')"
+                  />
+                </div>
 
-              <div v-if="checkoutMode === 'guest' && guestCaptchaEnabled" class="space-y-2">
-                <p class="text-xs font-semibold uppercase tracking-[0.14em] theme-text-muted">{{ t('auth.common.captchaLabel') }}</p>
-                <ImageCaptcha
-                  v-if="captchaProvider === 'image'"
-                  ref="guestImageCaptchaRef"
-                  v-model="guestCaptchaPayload"
-                  :disabled="submitting"
-                  @config-stale="handleGuestCaptchaConfigStale"
-                />
-                <TurnstileCaptcha
-                  v-else-if="captchaProvider === 'turnstile'"
-                  ref="guestTurnstileRef"
-                  v-model="guestTurnstileToken"
-                  :site-key="guestTurnstileSiteKey"
-                />
-              </div>
+                <div v-if="guestCaptchaEnabled" class="space-y-2">
+                  <p class="text-xs font-semibold uppercase tracking-[0.14em] theme-text-muted">{{ t('auth.common.captchaLabel') }}</p>
+                  <ImageCaptcha
+                    v-if="captchaProvider === 'image'"
+                    ref="guestImageCaptchaRef"
+                    v-model="guestCaptchaPayload"
+                    :disabled="submitting"
+                    @config-stale="handleGuestCaptchaConfigStale"
+                  />
+                  <TurnstileCaptcha
+                    v-else-if="captchaProvider === 'turnstile'"
+                    ref="guestTurnstileRef"
+                    v-model="guestTurnstileToken"
+                    :site-key="guestTurnstileSiteKey"
+                  />
+                </div>
 
-              <div v-if="checkoutMode === 'guest'" class="mb-3 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
-                <p class="font-semibold">{{ t('checkout.guestInstructions.title') }}</p>
-                <ul class="mt-2 space-y-1 list-disc pl-5">
-                  <li v-if="orderRequiresShippingAddress">{{ t('checkout.guestPhoneSyncHint') }}</li>
-                  <li>{{ t('checkout.guestInstructions.password') }}</li>
-                  <li>{{ t('checkout.guestInstructions.email') }}</li>
-                </ul>
-              </div>
+                <div class="mb-3 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+                  <p class="font-semibold">{{ t('checkout.guestInstructions.title') }}</p>
+                  <ul class="mt-2 space-y-1 list-disc pl-5">
+                    <li v-if="orderRequiresShippingAddress">{{ t('checkout.guestPhoneSyncHint') }}</li>
+                    <li>{{ t('checkout.guestInstructions.password') }}</li>
+                    <li>{{ t('checkout.guestInstructions.email') }}</li>
+                  </ul>
+                </div>
+              </form>
               <p v-if="checkoutMode === 'guest' && guestPhone && !guestPhoneValid" class="text-xs text-red-500">
                 {{ t('error.phone_invalid') }}
               </p>
