@@ -1,19 +1,33 @@
 <template>
   <div
     v-if="manualFormProducts.length"
-    class="rounded-2xl border theme-panel p-6"
+    :class="[
+      embedded
+        ? 'space-y-4'
+        : 'rounded-2xl border theme-panel p-6',
+    ]"
   >
-    <h2 class="mb-2 text-lg font-bold theme-text-primary">{{ t('checkout.manualFormTitle') }}</h2>
-    <p class="mb-4 text-xs theme-text-muted">{{ t('checkout.manualFormTip') }}</p>
-    <div class="space-y-5">
+    <template v-if="!embedded">
+      <h2 class="mb-2 text-lg font-bold theme-text-primary">{{ t('checkout.manualFormTitle') }}</h2>
+      <p class="mb-4 text-xs theme-text-muted">{{ t('checkout.manualFormTip') }}</p>
+    </template>
+    <div :class="compact ? 'space-y-4' : 'space-y-5'">
       <div
         v-for="manualItem in manualFormProducts"
         :key="manualItem.itemKey"
-        class="rounded-xl border theme-surface-soft p-4"
+        :class="[
+          'rounded-xl border theme-surface-soft',
+          compact ? 'p-3' : 'p-4',
+        ]"
       >
         <h3 class="mb-3 text-sm font-semibold theme-text-primary">{{ manualItemTitle(manualItem) }}</h3>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div v-for="field in manualItem.fields" :key="`${manualItem.itemKey}-${field.key}`" class="space-y-1.5">
+        <div :class="compact ? 'grid grid-cols-1 gap-3 md:grid-cols-2' : 'grid grid-cols-1 gap-4 md:grid-cols-2'">
+          <div
+            v-for="field in manualItem.fields"
+            :key="`${manualItem.itemKey}-${field.key}`"
+            :data-manual-field-input="manualFieldDomKey(manualItem.itemKey, field.key)"
+            class="space-y-1.5"
+          >
             <label class="text-xs font-semibold theme-text-secondary">
               {{ getManualFieldLabel(field) }}
               <span v-if="field.required" class="ml-1 text-red-500">*</span>
@@ -116,6 +130,8 @@ const props = defineProps<{
   manualFormProducts: ManualFormProduct[]
   modelValue: Record<string, Record<string, any>>
   submitAttempted: boolean
+  embedded?: boolean
+  compact?: boolean
   getManualFieldLabel: (field: ManualFormField) => string
   getManualFieldPlaceholder: (field: ManualFormField) => string
   manualFieldError: (itemKey: string, fieldKey: string) => string
@@ -137,6 +153,8 @@ const manualItemTitle = (manualItem: ManualFormProduct) => {
 const getFieldValue = (itemKey: string, fieldKey: string) => {
   return props.modelValue[itemKey]?.[fieldKey] ?? ''
 }
+
+const manualFieldDomKey = (itemKey: string, fieldKey: string) => `${itemKey}:${fieldKey}`
 
 const updateFieldValue = (itemKey: string, fieldKey: string, value: any) => {
   const updated = { ...props.modelValue }
