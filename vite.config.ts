@@ -15,6 +15,12 @@ const cfAsyncModuleScriptPlugin = () => ({
 export default defineConfig(({ mode }) => ({
   plugins: [vue(), cfAsyncModuleScriptPlugin()],
   esbuild: mode === 'production' ? { drop: ['console', 'debugger'] } : {},
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    css: true,
+    setupFiles: ['./src/test/setup.ts'],
+  },
   build: {
     rollupOptions: {
       output: {
