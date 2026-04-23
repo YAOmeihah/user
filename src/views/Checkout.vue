@@ -138,6 +138,22 @@
               <h2 class="text-lg font-bold theme-text-primary">{{ t('checkout.shippingTitle') }}</h2>
               <p class="mt-1 text-sm theme-text-muted">{{ t('checkout.shippingTip') }}</p>
             </div>
+            <GuestShippingAddressRecallCard
+              v-if="showGuestShippingRecallCard"
+              :summary-lines="guestShippingRecallSummaryLines"
+              :title="t('checkout.guestShippingRecallTitle')"
+              :use-label="t('checkout.guestShippingRecallUse')"
+              :rewrite-label="t('checkout.guestShippingRecallRewrite')"
+              :applied-message="t('checkout.guestShippingRecallApplied')"
+              :clear-form-label="t('checkout.guestShippingRecallClearForm')"
+              :clear-record-label="t('checkout.guestShippingRecallClearRecord')"
+              :applied="guestShippingRecallApplied"
+              :muted="guestShippingRecallMuted"
+              @use="applyGuestShippingRecall"
+              @rewrite="handleGuestShippingRewrite"
+              @clear-form="handleGuestShippingClearForm"
+              @clear-record="handleGuestShippingClearRecord"
+            />
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <input
                 v-model="shippingAddress.receiver_name"
@@ -399,7 +415,15 @@ import { getAffiliateCode, getAffiliateVisitorKey } from '../utils/affiliate'
 import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
 import CheckoutManualForm from '../components/checkout/CheckoutManualForm.vue'
+import GuestShippingAddressRecallCard from '../components/checkout/GuestShippingAddressRecallCard.vue'
 import RegionSelector from '../components/checkout/RegionSelector.vue'
+import {
+  clearGuestShippingAddressRecall,
+  loadGuestShippingAddressRecall,
+  saveGuestShippingAddressRecall,
+  shouldEnableGuestShippingAddressRecall,
+  type GuestShippingAddressRecallRecord,
+} from '../composables/useGuestShippingAddressRecall'
 import { useLocalized } from '../composables/useProduct'
 import type { ShippingAddressFormValue } from '../types/address'
 
@@ -889,7 +913,7 @@ const buildManualFormDataPayload = () => {
 }
 
 const manualFormFingerprint = computed(() => JSON.stringify(manualFormData.value))
-const shippingAddress = ref<ShippingAddressFormValue>({
+const emptyShippingAddress = (): ShippingAddressFormValue => ({
   receiver_name: '',
   receiver_phone: '',
   province: '',
@@ -902,6 +926,7 @@ const shippingAddress = ref<ShippingAddressFormValue>({
   township_code: '',
   detail_address: '',
 })
+const shippingAddress = ref<ShippingAddressFormValue>(emptyShippingAddress())
 const orderRequiresShippingAddress = computed(() => cartItems.value.some((item) => item.requiresShippingAddress))
 const shippingRegionMissing = computed(() => {
   if (!orderRequiresShippingAddress.value) return false
@@ -937,6 +962,10 @@ const buildShippingAddressPayload = () => {
 }
 const shippingAddressFingerprint = computed(() => JSON.stringify(buildShippingAddressPayload() || null))
 
+const guestShippingRecallRecord = ref<GuestShippingAddressRecallRecord | null>(null)
+const guestShippingRecallApplied = ref(false)
+const guestShippingRecallRewriteMode = ref(false)
+
 const flowSteps = computed(() => {
   if (isBuyNowMode.value) {
     return [
@@ -952,6 +981,40 @@ const flowSteps = computed(() => {
 })
 
 const isGuestCheckout = computed(() => !userAuthStore.isAuthenticated && checkoutMode.value === 'guest')
+const guestShippingRecallEnabled = computed(() => shouldEnableGuestShippingAddressRecall({
+  orderRequiresShippingAddress: orderRequiresShippingAddress.value,
+  isAuthenticated: userAuthStore.isAuthenticated,
+  checkoutMode: checkoutMode.value,
+}))
+const hasManualShippingInput = computed(() => Boolean(
+  shippingAddress.value.receiver_name.trim() ||
+  shippingAddress.value.receiver_phone.trim() ||
+  shippingAddress.value.province_code.trim() ||
+  shippingAddress.value.city_code.trim() ||
+  shippingAddress.value.district_code.trim() ||
+  shippingAddress.value.township_code.trim() ||
+  shippingAddress.value.detail_address.trim(),
+))
+const showGuestShippingRecallCard = computed(() =>
+  guestShippingRecallEnabled.value && !!guestShippingRecallRecord.value,
+)
+const guestShippingRecallMuted = computed(() =>
+  !guestShippingRecallApplied.value && (hasManualShippingInput.value || guestShippingRecallRewriteMode.value),
+)
+const guestShippingRecallSummaryLines = computed(() => {
+  const record = guestShippingRecallRecord.value
+  if (!record) return []
+
+  const trimmedPhone = record.receiver_phone.trim()
+  const maskedPhone = trimmedPhone.length >= 7
+    ? `${trimmedPhone.slice(0, 3)}****${trimmedPhone.slice(-4)}`
+    : trimmedPhone
+
+  return [
+    `${record.receiver_name} · ${maskedPhone}`,
+    [record.province, record.city, record.district, record.township, record.detail_address].filter(Boolean).join(' '),
+  ]
+})
 const shouldSyncGuestPhoneFromShipping = computed(() => {
   return isGuestCheckout.value && orderRequiresShippingAddress.value && guestPhoneAutoManaged.value
 })
@@ -966,6 +1029,51 @@ const handleGuestPhoneInput = (event: Event) => {
 
   guestPhone.value = nextValue
   guestPhoneAutoManaged.value = nextValue === '' || nextValue === shippingPhone
+}
+
+const resetShippingAddressForm = () => {
+  shippingAddress.value = emptyShippingAddress()
+}
+
+const applyGuestShippingRecall = () => {
+  const record = guestShippingRecallRecord.value
+  if (!record) return
+
+  shippingAddress.value = {
+    receiver_name: record.receiver_name,
+    receiver_phone: record.receiver_phone,
+    province: record.province,
+    province_code: record.province_code,
+    city: record.city,
+    city_code: record.city_code,
+    district: record.district,
+    district_code: record.district_code,
+    township: record.township,
+    township_code: record.township_code,
+    detail_address: record.detail_address,
+  }
+
+  guestShippingRecallApplied.value = true
+  guestShippingRecallRewriteMode.value = false
+}
+
+const handleGuestShippingRewrite = () => {
+  resetShippingAddressForm()
+  guestShippingRecallApplied.value = false
+  guestShippingRecallRewriteMode.value = true
+}
+
+const handleGuestShippingClearForm = () => {
+  resetShippingAddressForm()
+  guestShippingRecallApplied.value = false
+  guestShippingRecallRewriteMode.value = true
+}
+
+const handleGuestShippingClearRecord = () => {
+  clearGuestShippingAddressRecall()
+  guestShippingRecallRecord.value = null
+  guestShippingRecallApplied.value = false
+  guestShippingRecallRewriteMode.value = false
 }
 
 const guestEmailValid = computed(() => {
@@ -1270,6 +1378,15 @@ const handleSubmit = async () => {
         order_password: guestPassword.value,
         captcha_payload: getGuestCaptchaPayload(),
       })
+      const shippingPayload = buildShippingAddressPayload()
+      if (isGuestCheckout.value && shippingPayload) {
+        const recentRecord = {
+          ...shippingPayload,
+          saved_at: new Date().toISOString(),
+        }
+        saveGuestShippingAddressRecall(recentRecord)
+        guestShippingRecallRecord.value = recentRecord
+      }
       localStorage.setItem('guest_order_auth', JSON.stringify({
         phone: guestPhone.value.trim(),
         email: guestEmail.value.trim(),
@@ -1375,6 +1492,7 @@ const loadWalletBalance = async () => {
 }
 
 onMounted(async () => {
+  guestShippingRecallRecord.value = loadGuestShippingAddressRecall()
   if (!appStore.config) {
     await appStore.loadConfig()
   }
