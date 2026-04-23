@@ -720,8 +720,8 @@ import MobileCheckoutFlow from '../components/checkout/mobile/MobileCheckoutFlow
 import RegionSelector from '../components/checkout/RegionSelector.vue'
 import {
   clearGuestShippingAddressRecall,
+  createGuestShippingAddressRecallRecord,
   loadGuestShippingAddressRecall,
-  saveGuestShippingAddressRecall,
   shouldEnableGuestShippingAddressRecall,
   type GuestShippingAddressRecallRecord,
 } from '../composables/useGuestShippingAddressRecall'
@@ -1391,6 +1391,16 @@ const handleGuestShippingClearRecord = () => {
   guestShippingRecallRewriteMode.value = false
 }
 
+const persistGuestShippingRecallFromCurrentAddress = () => {
+  const shippingPayload = buildShippingAddressPayload()
+  if (!isGuestCheckout.value || !shippingPayload) return null
+
+  const recentRecord = createGuestShippingAddressRecallRecord(shippingPayload)
+  guestShippingRecallRecord.value = recentRecord
+  guestShippingRecallRewriteMode.value = false
+  return recentRecord
+}
+
 const guestEmailValid = computed(() => {
   if (!isGuestCheckout.value) return true
   const value = guestEmail.value.trim()
@@ -1962,6 +1972,7 @@ const handleMobilePrimaryAction = async () => {
     }
 
     confirmMobileSection('shipping', mobileShippingFingerprint.value)
+    persistGuestShippingRecallFromCurrentAddress()
     await nextTick()
     return
   }
@@ -2186,15 +2197,7 @@ const handleSubmit = async () => {
         order_password: guestPassword.value,
         captcha_payload: getGuestCaptchaPayload(),
       })
-      const shippingPayload = buildShippingAddressPayload()
-      if (isGuestCheckout.value && shippingPayload) {
-        const recentRecord = {
-          ...shippingPayload,
-          saved_at: new Date().toISOString(),
-        }
-        saveGuestShippingAddressRecall(recentRecord)
-        guestShippingRecallRecord.value = recentRecord
-      }
+      persistGuestShippingRecallFromCurrentAddress()
       localStorage.setItem('guest_order_auth', JSON.stringify({
         phone: guestPhone.value.trim(),
         email: guestEmail.value.trim(),
