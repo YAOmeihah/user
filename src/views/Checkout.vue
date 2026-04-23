@@ -6,41 +6,19 @@
         <p class="text-sm theme-text-secondary">{{ t('checkout.subtitle') }}</p>
       </div>
 
-      <div class="mb-8 hidden rounded-2xl border theme-border theme-panel-soft p-4 backdrop-blur lg:block">
-        <div class="flex items-center">
-          <template v-for="(step, idx) in flowSteps" :key="step.key">
-            <div class="flex items-center gap-2" :class="idx === 0 ? '' : 'flex-1'">
-              <div v-if="idx > 0" class="flex-1 h-0.5 rounded-full transition-colors"
-                :class="step.active ? 'bg-current theme-text-accent' : 'theme-surface-muted'"></div>
-              <div class="flex items-center gap-2 shrink-0">
-                <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors"
-                  :class="step.active
-                    ? 'theme-btn-primary border-transparent'
-                    : 'border-gray-300 dark:border-gray-600 theme-text-muted'">
-                  {{ idx + 1 }}
-                </span>
-                <span class="text-sm font-medium hidden sm:inline"
-                  :class="step.active ? 'theme-text-primary' : 'theme-text-muted'">
-                  {{ step.label }}
-                </span>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
+      <CheckoutSteps
+        class="mb-8"
+        current-step="checkout"
+        :step-keys="isBuyNowMode ? ['checkout', 'payment'] : ['cart', 'checkout', 'payment']"
+      />
 
-      <div
+      <EmptyState
         v-if="cartItems.length === 0"
-        class="rounded-2xl border theme-panel p-12 text-center"
-      >
-        <p class="mb-6 theme-text-muted">{{ t('checkout.empty') }}</p>
-        <router-link
-          to="/products"
-          class="theme-btn-inline-md theme-btn-primary gap-2 font-semibold transition-colors"
-        >
-          {{ t('checkout.emptyAction') }}
-        </router-link>
-      </div>
+        icon="cart"
+        :title="t('checkout.empty')"
+        :action-label="t('checkout.emptyAction')"
+        action-to="/products"
+      />
 
       <div v-else>
         <MobileCheckoutFlow
@@ -69,24 +47,11 @@
               >
                 <div class="flex items-start gap-3">
                   <div class="h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/10 dark:bg-black/30">
-                    <img
-                      v-if="checkoutItemImage(item)"
+                    <SmartImage
                       :src="checkoutItemImage(item)"
                       :alt="getLocalizedText(item.title)"
-                      loading="lazy"
-                      decoding="async"
-                      class="h-full w-full object-cover"
+                      img-class="h-full w-full object-cover"
                     />
-                    <div v-else class="flex h-full w-full items-center justify-center theme-text-muted">
-                      <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="1.5"
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
                   </div>
                   <div class="min-w-0 flex-1">
                     <router-link :to="`/products/${item.slug}`" class="line-clamp-2 text-sm font-semibold theme-link">
@@ -100,6 +65,24 @@
                       :class="itemStockExceeded(item) ? 'text-amber-600 dark:text-amber-300' : 'theme-text-muted'"
                     >
                       {{ itemStockHint(item) }}
+                    </div>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      <span
+                        class="theme-badge text-xs uppercase tracking-wider"
+                        :class="item.purchaseType === 'guest'
+                          ? 'theme-badge-warning'
+                          : 'theme-badge-success'"
+                      >
+                        {{ item.purchaseType === 'guest' ? t('productPurchase.guest') : t('productPurchase.member') }}
+                      </span>
+                      <span
+                        class="theme-badge text-xs uppercase tracking-wider"
+                        :class="item.fulfillmentType === 'auto'
+                          ? 'theme-badge-info'
+                          : 'theme-badge-neutral'"
+                      >
+                        {{ item.fulfillmentType === 'auto' ? t('products.fulfillmentType.auto') : t('products.fulfillmentType.manual') }}
+                      </span>
                     </div>
                     <div class="mt-2 text-sm font-semibold theme-text-primary">{{ itemSubtotal(item) }}</div>
                   </div>
@@ -735,6 +718,9 @@ import { getAffiliateCode, getAffiliateVisitorKey } from '../utils/affiliate'
 import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
 import CheckoutManualForm from '../components/checkout/CheckoutManualForm.vue'
+import EmptyState from '../components/EmptyState.vue'
+import SmartImage from '../components/SmartImage.vue'
+import CheckoutSteps from '../components/checkout/CheckoutSteps.vue'
 import GuestShippingAddressRecallCard from '../components/checkout/GuestShippingAddressRecallCard.vue'
 import MobileCheckoutFlow from '../components/checkout/mobile/MobileCheckoutFlow.vue'
 import RegionSelector from '../components/checkout/RegionSelector.vue'
@@ -1300,20 +1286,6 @@ const shippingAddressFingerprint = computed(() => JSON.stringify(buildShippingAd
 const guestShippingRecallRecord = ref<GuestShippingAddressRecallRecord | null>(null)
 const guestShippingRecallApplied = ref(false)
 const guestShippingRecallRewriteMode = ref(false)
-
-const flowSteps = computed(() => {
-  if (isBuyNowMode.value) {
-    return [
-      { key: 'checkout', label: t('checkout.title'), active: true },
-      { key: 'payment', label: t('payment.title'), active: false },
-    ]
-  }
-  return [
-    { key: 'cart', label: t('cart.title'), active: false },
-    { key: 'checkout', label: t('checkout.title'), active: true },
-    { key: 'payment', label: t('payment.title'), active: false },
-  ]
-})
 
 const isGuestCheckout = computed(() => !userAuthStore.isAuthenticated && checkoutMode.value === 'guest')
 const guestShippingRecallEnabled = computed(() => shouldEnableGuestShippingAddressRecall({
