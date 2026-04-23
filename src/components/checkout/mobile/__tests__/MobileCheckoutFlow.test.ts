@@ -47,9 +47,29 @@ describe('MobileCheckoutFlow', () => {
     expect(wrapper.find('[data-testid="items-slot"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="shipping-slot"]').exists()).toBe(true)
     expect(wrapper.find('[data-section-badge="items"]').exists()).toBe(false)
-    expect(wrapper.get('[data-section-root="shipping"]').attributes('data-section-state')).toBe('current')
+    expect(wrapper.get('[data-section-root="shipping"]').attributes('data-section-state')).toBe('current-editing')
     expect(wrapper.get('[data-section-error="shipping"]').text()).toContain('请填写完整收货地址')
     expect(wrapper.get('[data-section-toggle="items"]').text()).toContain('查看明细')
+  })
+
+  it('keeps the breathing highlight only on the collapsed recommended section', () => {
+    const wrapper = mount(MobileCheckoutFlow, {
+      props: {
+        sections,
+        expandedSection: 'items',
+        statusText: '请先填写收货信息',
+        totalText: '¥2.00',
+        primaryActionLabel: '保存收货信息',
+        primaryActionDisabled: false,
+      },
+      slots: {
+        'section-items': '<div data-testid="items-slot">items slot</div>',
+        'section-shipping': '<div data-testid="shipping-slot">shipping slot</div>',
+      },
+    })
+
+    expect(wrapper.find('[data-testid="shipping-slot"]').exists()).toBe(false)
+    expect(wrapper.get('[data-section-root="shipping"]').attributes('data-section-state')).toBe('current')
   })
 
   it('emits section changes and primary action clicks', async () => {

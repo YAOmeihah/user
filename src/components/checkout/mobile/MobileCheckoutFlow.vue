@@ -13,7 +13,11 @@
       v-for="section in sections"
       :key="section.key"
       :data-section-root="section.key"
-      :data-section-state="section.recommended ? 'current' : section.complete ? 'complete' : 'idle'"
+      :data-section-state="section.recommended
+        ? (expandedSection === section.key ? 'current-editing' : 'current')
+        : section.complete
+          ? 'complete'
+          : 'idle'"
       :class="[
         'overflow-hidden rounded-2xl border theme-panel transition-all duration-300 ease-out',
         section.recommended ? 'shadow-lg shadow-black/5 ring-1 ring-white/40' : '',
