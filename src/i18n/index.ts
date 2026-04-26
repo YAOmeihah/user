@@ -179,6 +179,11 @@ const messages = {
         notice: {
             subtitle: '重要公告和通知',
             empty: '暂无公告',
+            popup: {
+                title: '首页公告',
+                close: '关闭',
+                snoozeToday: '今日不再弹出',
+            },
         },
         about: {
             title: '关于我们',
@@ -1308,6 +1313,11 @@ const messages = {
         notice: {
             subtitle: '重要公告和通知',
             empty: '暫無公告',
+            popup: {
+                title: '首頁公告',
+                close: '關閉',
+                snoozeToday: '今日不再彈出',
+            },
         },
         about: {
             title: '關於我們',
@@ -2398,6 +2408,11 @@ const messages = {
         notice: {
             subtitle: 'Important notices and announcements',
             empty: 'No notices',
+            popup: {
+                title: 'Home notice',
+                close: 'Close',
+                snoozeToday: 'Do not show today',
+            },
         },
         about: {
             title: 'About Us',
