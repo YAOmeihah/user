@@ -327,6 +327,37 @@
           </div>
         </div>
 
+        <!-- Related Posts -->
+        <section v-if="relatedPosts.length"
+          class="theme-panel backdrop-blur-xl border rounded-3xl overflow-hidden mb-12 p-6 md:p-8 lg:p-12 relative">
+          <h2 class="text-2xl font-bold theme-text-primary mb-8 flex items-center gap-3 border-b theme-border pb-6">
+            <span class="w-1.5 h-8 theme-accent-stick rounded-full"></span>
+            {{ t('productDetail.relatedPosts') }}
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <router-link
+              v-for="rp in relatedPosts"
+              :key="rp.id"
+              :to="`/blog/${rp.slug}`"
+              class="group theme-panel-soft backdrop-blur-md border rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col"
+            >
+              <div v-if="rp.thumbnail" class="h-32 overflow-hidden relative">
+                <img :src="getImageUrl(rp.thumbnail)" :alt="getLocalizedText(rp.title)" loading="lazy"
+                  class="h-full w-full object-cover transition-transform group-hover:scale-110" />
+              </div>
+              <div class="p-5 flex flex-col flex-1">
+                <h3 class="font-semibold theme-text-primary line-clamp-2 mb-2">{{ getLocalizedText(rp.title) }}</h3>
+                <p v-if="rp.summary" class="text-sm theme-text-secondary line-clamp-2 leading-relaxed mb-3">
+                  {{ getLocalizedText(rp.summary) }}
+                </p>
+                <time class="mt-auto text-xs theme-text-muted font-mono">
+                  {{ formatRelatedPostDate(rp.published_at) }}
+                </time>
+              </div>
+            </router-link>
+          </div>
+        </section>
+
         <!-- Back Button -->
         <div class="mb-12 text-center">
           <router-link to="/products"
@@ -438,6 +469,12 @@ const formatPromotionRule = (rule: any) => {
 
 const loading = ref(true)
 const product = ref<any>(null)
+const relatedPosts = computed<any[]>(() => product.value?.related_posts || [])
+const formatRelatedPostDate = (dateString: string) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString(appStore.locale, { year: 'numeric', month: 'long', day: 'numeric' })
+}
 const currentImage = ref<string>('')
 const selectedSkuId = ref(0)
 const quantity = ref(1)
