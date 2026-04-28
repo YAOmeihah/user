@@ -367,7 +367,7 @@
         @click.self="closeHomePopup"
       >
         <section
-          class="flex max-h-[calc(100dvh-0.75rem)] w-full flex-col overflow-hidden rounded-t-2xl border theme-panel shadow-2xl sm:max-h-[85vh] sm:max-w-2xl sm:rounded-2xl"
+          class="flex max-h-[calc(100dvh-0.75rem)] w-full flex-col overflow-hidden rounded-t-2xl theme-panel shadow-2xl sm:max-h-[85vh] sm:max-w-2xl sm:rounded-2xl"
           role="dialog"
           aria-modal="true"
           :aria-label="t('notice.popup.title')"

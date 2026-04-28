@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full min-h-0 theme-page overflow-hidden pt-20">
+  <div class="h-full min-h-0 theme-page overflow-hidden pt-20 pb-2 sm:pb-4 lg:pb-6">
     <div class="container mx-auto h-full px-2 sm:px-4">
       <div class="mx-auto relative h-full min-h-0 overflow-hidden rounded-3xl border theme-panel backdrop-blur-xl">
           <iframe
