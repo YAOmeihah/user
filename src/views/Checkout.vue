@@ -223,6 +223,13 @@
                       v-model="guestTurnstileToken"
                       :site-key="guestTurnstileSiteKey"
                     />
+                    <CapCaptcha
+                      v-else-if="captchaProvider === 'cap'"
+                      ref="guestCapRef"
+                      v-model="guestCapToken"
+                      :endpoint="guestCapEndpoint"
+                      :site-key="guestCapSiteKey"
+                    />
                   </div>
 
                   <div class="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
@@ -562,6 +569,13 @@
                     v-model="guestTurnstileToken"
                     :site-key="guestTurnstileSiteKey"
                   />
+                  <CapCaptcha
+                    v-else-if="captchaProvider === 'cap'"
+                    ref="guestCapRef"
+                    v-model="guestCapToken"
+                    :endpoint="guestCapEndpoint"
+                    :site-key="guestCapSiteKey"
+                  />
                 </div>
 
                 <div class="mb-3 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-900">
@@ -717,6 +731,7 @@ import { getImageUrl } from '../utils/image'
 import { getAffiliateCode, getAffiliateVisitorKey } from '../utils/affiliate'
 import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
 import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
+import CapCaptcha from '../components/captcha/CapCaptcha.vue'
 import CheckoutManualForm from '../components/checkout/CheckoutManualForm.vue'
 import EmptyState from '../components/EmptyState.vue'
 import SmartImage from '../components/SmartImage.vue'
@@ -946,8 +961,10 @@ const guestEmail = ref('')
 const guestPassword = ref('')
 const guestCaptchaPayload = ref<CaptchaPayload>({})
 const guestTurnstileToken = ref('')
+const guestCapToken = ref('')
 const guestImageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)
 const guestTurnstileRef = ref<InstanceType<typeof TurnstileCaptcha> | null>(null)
+const guestCapRef = ref<InstanceType<typeof CapCaptcha> | null>(null)
 
 interface ManualFormField {
   key: string
@@ -1407,6 +1424,8 @@ const guestCaptchaEnabled = computed(() => {
   return !!captchaConfig.value?.scenes?.guest_create_order && captchaProvider.value !== 'none'
 })
 const guestTurnstileSiteKey = computed(() => String(captchaConfig.value?.turnstile?.site_key || ''))
+const guestCapEndpoint = computed(() => String(captchaConfig.value?.cap?.endpoint || ''))
+const guestCapSiteKey = computed(() => String(captchaConfig.value?.cap?.site_key || ''))
 const guestCaptchaComplete = computed(() => {
   if (!guestCaptchaEnabled.value) return true
   if (captchaProvider.value === 'image') {
@@ -1414,6 +1433,9 @@ const guestCaptchaComplete = computed(() => {
   }
   if (captchaProvider.value === 'turnstile') {
     return Boolean(guestTurnstileToken.value)
+  }
+  if (captchaProvider.value === 'cap') {
+    return Boolean(guestCapToken.value)
   }
   return false
 })
@@ -1431,6 +1453,11 @@ const getGuestCaptchaPayload = (): CaptchaPayload | undefined => {
       turnstile_token: guestTurnstileToken.value,
     }
   }
+  if (captchaProvider.value === 'cap') {
+    return {
+      cap_token: guestCapToken.value,
+    }
+  }
   return undefined
 }
 
@@ -1438,6 +1465,7 @@ const handleGuestCaptchaConfigStale = async () => {
   await appStore.loadConfig(true)
   guestCaptchaPayload.value = {}
   guestTurnstileToken.value = ''
+  guestCapToken.value = ''
 }
 
 const canSubmit = computed(() => {
@@ -2217,6 +2245,10 @@ const handleSubmit = async () => {
     if (guestCaptchaEnabled.value && captchaProvider.value === 'turnstile') {
       guestTurnstileRef.value?.reset()
       guestTurnstileToken.value = ''
+    }
+    if (guestCaptchaEnabled.value && captchaProvider.value === 'cap') {
+      guestCapRef.value?.reset()
+      guestCapToken.value = ''
     }
   } finally {
     submitting.value = false

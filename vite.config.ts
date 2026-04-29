@@ -14,7 +14,16 @@ const cfAsyncModuleScriptPlugin = () => ({
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [vue(), cfAsyncModuleScriptPlugin()],
+  plugins: [
+    vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag) => tag.startsWith('cap-'),
+        },
+      },
+    }),
+    cfAsyncModuleScriptPlugin(),
+  ],
   esbuild: mode === 'production' ? { drop: ['console', 'debugger'] } : {},
   test: {
     environment: 'jsdom',
