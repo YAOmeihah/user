@@ -424,6 +424,11 @@ const normalizeOptionalLimitNumber = (value: unknown) => {
   return i
 }
 
+const effectiveMin = computed(() => {
+  const productMin = normalizeOptionalLimitNumber(props.product?.min_purchase_quantity)
+  return productMin && productMin > 0 ? productMin : 1
+})
+
 const shouldEnforceSkuStock = (sku: any) => {
   if (!sku) return false
   if (props.product?.fulfillment_type === 'auto') return true
@@ -513,11 +518,6 @@ const effectiveLimit = computed(() => {
     limit = limit === null ? available : Math.min(limit, available)
   }
   return limit
-})
-
-const effectiveMin = computed(() => {
-  const productMin = normalizeOptionalLimitNumber(props.product?.min_purchase_quantity)
-  return productMin && productMin > 0 ? productMin : 1
 })
 
 const purchaseType = computed(() => props.product?.purchase_type || 'member')
